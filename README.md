@@ -1,6 +1,6 @@
 # 一页纸 · 日程规划器
 
-> 一款零依赖、纯前端、打开即用的「一日一页纸」日程规划器。支持 4×4 网格笔记、农历生日、天气定位、四视图切换、Markdown 写作、本地数据持久化。
+> 一款零依赖、纯前端、打开即用的「一日一页纸」日程规划器。支持 4×4 网格笔记（多页）、农历生日、天气定位、四视图切换、Markdown 写作、本地数据持久化、4×4 重要性分区排序。
 
 ![页面大小](https://img.shields.io/badge/size-100KB-blue) ![依赖](https://img.shields.io/badge/dependencies-zero-green) ![离线](https://img.shields.io/badge/offline-friendly-brightgreen)
 
@@ -11,6 +11,8 @@
 - [快速开始](#-快速开始)
 - [核心功能](#-核心功能)
 - [四视图详解](#-四视图详解)
+- [4×4 功能分区与重要性排序](#-44-功能分区与重要性排序)
+- [多页日视图](#-多页日视图)
 - [重要日子（生日/纪念日）](#-重要日子生日纪念日)
 - [天气与位置](#-天气与位置)
 - [农历支持](#-农历支持)
@@ -20,6 +22,7 @@
 - [技术架构](#-技术架构)
 - [常见问题](#-常见问题)
 - [自定义与扩展](#-自定义与扩展)
+- [更新日志](#-更新日志)
 
 ---
 
@@ -60,8 +63,9 @@ outputs/
 
 | 功能              | 说明                         |
 | --------------- | -------------------------- |
-| **4×4 日视图**     | 默认视图，一天 16 个格子写想法          |
-| **周/月/年视图**     | 完整时间维度切换                   |
+| **4×4 日视图**     | 默认视图，一天 16 个格子写想法（按列分区，工作/灵活/个人） |
+| **多页日视图**     | 当日 16 格写满后，按提示新增下一页             |
+| **周/月/年视图**     | 完整时间维度切换，跨页聚合 + 按重要性排序展示       |
 | **Markdown 写作** | 每个格子支持标题、列表、加粗、链接、引用       |
 | **重要日子侧边栏**     | 生日/纪念日管理，含删除               |
 | **农历生日**        | 阴历每年自动转阳历显示（如：八月廿八）        |
@@ -84,10 +88,12 @@ outputs/
 - **格子操作**：
   - 点击格子 → 进入编辑模式（textarea）
   - `Esc` / `⌘+Enter` → 保存
+  - `Tab` → 保存并跳到下一格
   - 鼠标悬停 → 右下角显示 ✓ 完成 / ✕ 取消
   - 点击 ✓ → 画红色斜线（已完成）
   - 点击 ✕ → 画红色叉（已取消）
   - 点击 ↻ → 恢复原状
+- **多页**：右下角 `◀ 第 N 页 / 共 M 页 ▶`，单页时自动隐藏。详见 [多页日视图](#-多页日视图)。
 
 ### 2. 周视图
 
@@ -118,6 +124,82 @@ outputs/
 ### 视图切换
 
 顶部 tab 切换：`日 | 周 | 月 | 年`
+
+---
+
+## 🎯 4×4 功能分区与重要性排序
+
+每个日视图的 4×4 = 16 格按下列布局分组，跨日/周/月/年视图统一按以下规则排序：
+
+| 位置（index） | 列 (col) | 归属栏 | 用途 | 重要性 |
+|---|---|---|---|---|
+| 0 | 0 | 信息格 | 日期/星期/天气/重要日子 | — |
+| 1, 5, 9, 13 | 1 | **工作** | 工作事项 | 同列内 row 0 > row 3 |
+| 4, 8, 12 | 0 | **工作**（左栏扩展） | 工作事项 | 同列内 row 1 > row 3 |
+| 2, 6, 10, 14 | 2 | **灵活** | 灵活事项 | 同列内 row 0 > row 3 |
+| 3, 7, 11, 15 | 3 | **个人/人际** | 个人成长、人际关系 | 同列内 row 0 > row 3 |
+
+> **Grid 布局示意**（CSS Grid 4 列 × 4 行，index 0 = 左上 info）：
+> ```
+> | 0(info) | 1(work) | 2(flex) | 3(personal) |  ← row 0
+> | 4(work) | 5(work) | 6(flex) | 7(personal) |   ← row 1
+> | 8(work) | 9(work) |10(flex) |11(personal) |   ← row 2
+> |12(work) |13(work) |14(flex) |15(personal) |   ← row 3
+> ```
+
+### 重要性排序规则
+
+1. **列优先级**：工作 > 灵活 > 个人
+2. **同列内**：上 (row 0) > 下 (row 3)
+
+### 实现（单一事实源）
+
+代码里以模块级常量定义，**所有视图统一调用 `Store.getDayItemsSorted(dateStr)`**：
+
+- `COLUMN_OF(index)` → 列号（`index % 4`）
+- `ROW_OF(index)` → 行号（`Math.floor(index / 4)`）
+- `COLUMN_TYPE_OF(index)` → `'info' | 'work' | 'flex' | 'personal'`
+- `itemImportance(index)` → 综合分数（`colWeight * 10 + rowWeight`）
+- `Store.getDayItemsSorted(dateStr)` → 返回按重要性降序的 `[{index, content, status, pageIdx}]`，**跨所有页面聚合**
+
+月视图的 previews、周视图的 cellSummaries 都直接消费 `getDayItemsSorted` 的结果，避免各视图自行实现导致不一致。
+
+---
+
+## 📄 多页日视图
+
+当某日的内容格写满（15 个内容格全部非空），在第 15 格按 `Tab` 时会弹出确认：
+
+> **格子已用完，是否新增另一页？**
+- **确定**：创建新页，自动跳转到新页第 1 格并进入编辑
+- **取消**：停留在原格
+
+### 数据结构
+
+```js
+// 旧 (v1): 单页
+cells[dateStr] = { 0: {...}, 1: {...}, ..., 15: {...} }
+
+// 新 (v2+): 多页
+cells[dateStr] = { pages: [ {...page0...}, {...page1...}, ... ] }
+```
+
+info 格（index 0）每页共享，不复制。
+
+### 自动迁移
+
+启动时 `Store.load()` 会检测旧格式（`day` 是普通对象，无 `.pages` 属性）并自动包一层 `{ pages: [day] }`。**用户无感知**。
+
+### 导航
+
+日视图右下角：`◀ 第 N 页 / 共 M 页 ▶`，单页时自动隐藏。`<◀` / `<▶>` 切换前后页（边界禁用）。
+
+### API
+
+- `Store.getPageCount(dateStr)` → 页数
+- `Store.ensurePage(dateStr, pageIdx)` → 创建/确保某页存在
+- `Store.isPageFilled(dateStr, pageIdx)` → 该页 15 格是否全部非空
+- `Store.getCell(dateStr, index, pageIdx)` → 读单格（默认当前页）
 
 ---
 
@@ -508,9 +590,57 @@ const MyView = {
 };
 ```
 
----
 
-## 📜 版本历史
+## 📜 更新日志
+
+### v2.0 (2026-08-27) — 三连改
+
+本次提交包含三个独立但相关的改动，所有改动都通过 headless Chrome + Node 自测验证。
+
+#### 🔧 任务一：农历换算修复（P0，最高优先）
+
+**问题**：用户报告农历八月廿八对应 2026-10-09，但权威源（寿星万年历 / 香港天文台）应是 **2026-10-08（周四）**，差 1 天。
+
+**根因**：内置 `LUNAR_INFO` 表（1900–2099 共 200 项）从某个早期版本起就**系统性偏差 1 天**。代码的位运算逻辑（`lunarToSolar` / `solarToLunar` 等）已核验正确，bug 全部在表里。
+
+**修复**：
+- 用权威 `lunar-typescript` 库（基于香港天文台 / 寿星万年历校核）逐条比对并重新生成完整 200 项表
+- 同步修正注释头（之前 "bit 15 = month 1" 与代码 `(1 << (m+3))` 矛盾）
+- 在 lunarToSolar 之后插入自测 IIFE，启动时打印 `[lunar] self-tests: 10/10 通过`，后续误改 LUNAR_INFO 会立即在 console 暴露
+- **零迁移负担**：老用户的 `importantDays` 只存 `{type:'lunar', month, day, isLeap, recur…}`，新表生效后自动全部正确
+
+**验证**：1900–2099 全部 73058 个日期转换与 lunar-typescript 100% 一致。
+
+#### 📄 任务二：格子用完 → 新增另一页
+
+- 数据结构升级：`cells[dateStr][index]` → `cells[dateStr].pages[pageIdx][index]`
+- 自动迁移：旧格式包一层 `{ pages: [oldData] }`
+- 仅在第 15 格按 `Tab` 且当前页 15 格全非空时弹 `confirm`，平时绝不打扰
+- info 格（index 0）每页共享，不复制
+- 日视图右下角加 `◀ 第 N 页 / 共 M 页 ▶` 翻页（单页自动隐藏）
+- 新增 Store API：`getPageCount` / `ensurePage` / `isPageFilled` / `getCurrentPage` / `setCurrentPage`
+
+#### 🎯 任务三：4×4 功能分区 + 重要性排序
+
+- 定义模块级常量 `COLUMN_OF` / `ROW_OF` / `COLUMN_TYPE_OF` / `COLUMN_WEIGHT` / `ROW_WEIGHT` / `itemImportance`
+- Grid 4 列映射：`col 0`（含 info + work 扩展）`col 1` work、`col 2` flex、`col 3` personal
+- 新增 `Store.getDayItemsSorted(dateStr)`：跨所有页面、按重要性降序返回 `[{index, content, status, pageIdx}]` —— 单一事实源
+- `Store.getDayPreviews` 改为消费 `getDayItemsSorted` 截取 top N
+- `WeekView.cellSummaries` 改为直接遍历 `getDayItemsSorted` 的结果
+- 任务三自测 IIFE：24/24 通过
+- `itemImportance(idx 1) > itemImportance(idx 2) > itemImportance(idx 3)`（列优先级）
+- 同列内 `row 0 > row 1 > row 2 > row 3`（行优先级）
+- 跨页聚合：第二页的 cell 1 正确归入 work 顶部
+
+### 文件结构变化
+
+```
+one-page-planner/
+├── one-page-planner.html  (102KB → 112KB; +1900 行, 含自测)
+└── README.md              (本文件, 已加入 v2.0 章节)
+```
+
+### v1.x 历史版本
 
 | 版本  | 日期         | 主要变化                        |
 | --- | ---------- | --------------------------- |
@@ -519,6 +649,7 @@ const MyView = {
 | 1.2 | 2026-08-25 | 重要日子侧边栏 + 农历选择器             |
 | 1.3 | 2026-08-26 | UI 重设计：日期+星期单行，天气+地点单行      |
 | 1.4 | 2026-08-27 | 农历每年重复、阳历/阴历一致 UX、信息栏显示重要日子 |
+| 2.0 | 2026-08-27 | 农历表全量重核、4×4 多页、4×4 重要性分区       |
 
 ---
 
@@ -534,3 +665,6 @@ MIT — 自由使用、修改、商用。
 - 反向地理编码：[OpenStreetMap Nominatim](https://nominatim.org/)
 - 农历数据表：基于公开的中文农历算法实现
 - 设计灵感：纸质计划本 + 极简数字美学
+
+
+##
