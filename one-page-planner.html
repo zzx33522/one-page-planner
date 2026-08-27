@@ -1,0 +1,3224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>一页纸 · 日程规划器</title>
+<style>
+  :root {
+    --bg: #FBF8F3;
+    --bg-card: #FFFFFF;
+    --bg-info: #F5F1EA;
+    --bg-soft: #F3EFE7;
+    --bg-hover: #F0EBE2;
+    --bg-today: #FBF4E4;
+    --bg-weekend: #FAF6EE;
+    --border: #E8E2D6;
+    --border-soft: #EFEAE0;
+    --border-strong: #C8C0B0;
+    --text: #2C2A26;
+    --text-secondary: #6B6864;
+    --text-muted: #A09A8E;
+    --text-faint: #BFB9AC;
+    --accent: #E74C3C;
+    --accent-soft: #FADBD8;
+    --accent-dark: #C0392B;
+    --info-accent: #5C7A8C;
+    --info-bg: #E9EEF1;
+    --gold: #C9A55A;
+    --gold-dark: #B8932E;
+    --gold-soft: #F4ECD4;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 14px rgba(0,0,0,0.04);
+    --shadow-lg: 0 8px 28px rgba(0,0,0,0.08);
+    --font-serif: Georgia, "Source Han Serif SC", "Noto Serif SC", "Songti SC", "STSong", "SimSun", serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --font-mono: "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+    --radius: 4px;
+    --radius-lg: 8px;
+    --transition: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  *::-webkit-scrollbar { width: 6px; height: 6px; }
+  *::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    font-family: var(--font-serif);
+    color: var(--text);
+    background: var(--bg);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button { font-family: inherit; color: inherit; background: none; border: none; cursor: pointer; padding: 0; }
+  input, textarea { font-family: inherit; color: inherit; border: none; outline: none; background: none; }
+
+  /* APP LAYOUT */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  /* HEADER */
+  header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 0 14px;
+    gap: 16px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  .brand { display: flex; align-items: baseline; gap: 10px; flex: 0 0 auto; }
+  .brand-title { font-size: 22px; font-weight: 600; letter-spacing: 1px; color: var(--text); }
+  .brand-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: var(--font-sans);
+  }
+
+  .view-tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--bg-soft);
+    padding: 3px;
+    border-radius: 999px;
+    border: 1px solid var(--border-soft);
+  }
+
+  .view-tab {
+    padding: 6px 18px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-radius: 999px;
+    transition: var(--transition);
+    font-family: var(--font-serif);
+    letter-spacing: 2px;
+  }
+
+  .view-tab:hover { color: var(--text); }
+  .view-tab.active {
+    background: var(--bg-card);
+    color: var(--text);
+    box-shadow: var(--shadow-sm);
+    font-weight: 600;
+  }
+
+  .date-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 1 auto;
+    justify-content: flex-end;
+  }
+
+  .date-display {
+    font-size: 15px;
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+    min-width: 160px;
+    text-align: center;
+    user-select: none;
+    letter-spacing: 0.5px;
+  }
+
+  .date-display:hover { background: var(--bg-hover); }
+
+  .nav-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    border: 1px solid transparent;
+  }
+
+  .nav-btn:hover { background: var(--bg-hover); color: var(--text); }
+
+  .today-btn {
+    font-size: 12px;
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    letter-spacing: 1px;
+  }
+
+  .today-btn:hover { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* MAIN */
+  .app-layout {
+    flex: 1 1 auto;
+    display: flex;
+    gap: 16px;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  main.main-content {
+    flex: 1 1 auto;
+    overflow: hidden;
+    padding: 16px 0 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* SIDEBAR */
+  .important-sidebar {
+    flex: 0 0 220px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: flex-basis 240ms ease;
+  }
+
+  .important-sidebar.collapsed {
+    flex: 0 0 44px;
+  }
+
+  .important-sidebar.collapsed .sidebar-header h3,
+  .important-sidebar.collapsed .sidebar-list,
+  .important-sidebar.collapsed .sidebar-empty {
+    display: none;
+  }
+
+  .important-sidebar.collapsed .sidebar-header {
+    padding: 14px 10px;
+    justify-content: center;
+  }
+
+  .sidebar-toggle {
+    margin-left: 4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: var(--transition);
+  }
+  .sidebar-toggle:hover {
+    background: var(--bg-card);
+    border-color: var(--text-secondary);
+    color: var(--text);
+  }
+
+  .sidebar-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--bg-info);
+  }
+
+  .sidebar-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-family: var(--font-serif);
+  }
+
+  .sidebar-header .star { color: var(--gold); font-size: 14px; }
+
+  .btn-add-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--text);
+    color: var(--bg);
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+  }
+  .btn-add-icon:hover { background: var(--accent); transform: scale(1.1); }
+
+  .sidebar-list {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 8px;
+    min-height: 0;
+  }
+
+  .sidebar-empty {
+    color: var(--text-faint);
+    font-style: italic;
+    text-align: center;
+    padding: 30px 10px;
+    font-size: 12px;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--bg-soft);
+    border-radius: var(--radius);
+    margin-bottom: 5px;
+    transition: var(--transition);
+    border-left: 2px solid var(--gold);
+  }
+
+  .sidebar-item:hover { background: var(--gold-soft); }
+
+  .sidebar-item-info {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .sidebar-item-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-bottom: 1px;
+  }
+
+  .sidebar-item-date {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sidebar-item-delete {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    flex-shrink: 0;
+    opacity: 0.6;
+  }
+
+  .sidebar-item:hover .sidebar-item-delete { opacity: 1; }
+
+  .sidebar-item-delete:hover {
+    color: var(--accent);
+    background: var(--bg-card);
+    border-color: var(--accent-soft);
+  }
+
+  .sidebar-item-delete svg { width: 10px; height: 10px; }
+
+  .sidebar-header h3 {
+    flex: 1 1 auto;
+    font-size: 13px;
+  }
+
+  .view {
+    flex: 1 1 auto;
+    display: none;
+    min-height: 0;
+    animation: fadeIn 240ms ease;
+  }
+
+  .view.active { display: flex; flex-direction: column; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">
+      <span class="brand-title">一页纸</span>
+      <span class="brand-sub">One Page</span>
+    </div>
+    <nav class="view-tabs" role="tablist">
+      <button class="view-tab active" data-view="day" role="tab">日</button>
+      <button class="view-tab" data-view="week" role="tab">周</button>
+      <button class="view-tab" data-view="month" role="tab">月</button>
+      <button class="view-tab" data-view="year" role="tab">年</button>
+    </nav>
+    <div class="date-nav">
+      <button class="today-btn" id="today-btn">今天</button>
+      <button class="nav-btn" id="prev-btn" title="上一个">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="date-display" id="date-display" title="点击选择日期"></div>
+      <button class="nav-btn" id="next-btn" title="下一个">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="app-layout">
+    <aside class="important-sidebar" id="important-sidebar">
+      <div class="sidebar-header">
+        <h3><span class="star">⭐</span> 重要日子</h3>
+        <button class="btn-add-icon" id="sidebar-add-btn" title="添加重要日子">+</button>
+        <button class="sidebar-toggle" id="sidebar-toggle-btn" title="收起侧边栏">‹</button>
+      </div>
+      <div class="sidebar-list" id="sidebar-list">
+        <div class="sidebar-empty">暂无重要日子<br>点击 + 添加</div>
+      </div>
+    </aside>
+    <main class="main-content">
+      <section class="view active" id="day-view">
+        <div class="grid" id="day-grid"></div>
+      </section>
+      <section class="view" id="week-view">
+        <div class="week-grid" id="week-grid"></div>
+      </section>
+      <section class="view" id="month-view">
+        <div class="month-container">
+          <div class="month-header-row" id="month-header"></div>
+          <div class="month-grid" id="month-grid"></div>
+        </div>
+      </section>
+      <section class="view" id="year-view">
+        <div class="year-grid" id="year-grid"></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- IMPORTANT DAYS MODAL -->
+<div class="modal-backdrop hidden" id="important-modal">
+  <div class="modal" role="dialog" aria-labelledby="modal-title">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">重要日子</div>
+      <button class="modal-close" id="modal-close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="important-list"></div>
+      <div class="add-row">
+        <div class="add-type-tabs">
+          <button type="button" class="type-tab active" data-type="solar">阳历</button>
+          <button type="button" class="type-tab" data-type="lunar">🌙 阴历</button>
+        </div>
+
+        <div class="add-fields" id="add-fields-solar">
+          <label class="add-label">选择日期</label>
+          <input type="date" class="form-input" id="new-day-date" />
+          <label class="recurring-check" title="每年重复显示，例如生日">
+            <input type="checkbox" id="new-solar-recurring" checked />
+            <span>每年重复</span>
+          </label>
+        </div>
+
+        <div class="add-fields hidden" id="add-fields-lunar">
+          <label class="add-label">选择月日</label>
+          <div class="lunar-selects">
+            <select class="form-input" id="new-lunar-month">
+              <option value="1">正月</option><option value="2">二月</option><option value="3">三月</option>
+              <option value="4">四月</option><option value="5">五月</option><option value="6">六月</option>
+              <option value="7">七月</option><option value="8">八月</option><option value="9">九月</option>
+              <option value="10">十月</option><option value="11">冬月</option><option value="12">腊月</option>
+            </select>
+            <select class="form-input" id="new-lunar-day">
+              <!-- filled by JS -->
+            </select>
+          </div>
+          <label class="lunar-leap-check" title="闰月：少数年份会多出一个月，如闰八月。大多数生日不在闰月。">
+            <input type="checkbox" id="new-lunar-leap" />
+            <span>闰月（少数情况）</span>
+          </label>
+          <label class="recurring-check" title="每年重复显示，例如农历生日">
+            <input type="checkbox" id="new-lunar-recurring" checked />
+            <span>每年重复</span>
+          </label>
+          <div class="lunar-year-row hidden" id="lunar-year-row">
+            <label class="add-label">指定年份（一次性）</label>
+            <input type="number" class="form-input" id="new-lunar-year" min="1900" max="2099" placeholder="2026" />
+          </div>
+        </div>
+
+        <label class="add-label">标题</label>
+        <input type="text" class="form-input" id="new-day-title" placeholder="标题，例如 生日、纪念日…" maxlength="40" />
+
+        <button class="btn btn-primary btn-add-confirm" id="add-day-btn">添加</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="modal-done">完成</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* DAY VIEW GRID */
+  #day-view .grid {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .cell {
+    background: var(--bg-card);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: background var(--transition);
+    min-height: 0;
+  }
+
+  .cell:not(.info-cell):hover { background: var(--bg-hover); }
+  .cell.completed:not(.info-cell) { background: var(--bg-soft); }
+  .cell.cancelled:not(.info-cell) { background: var(--bg-soft); }
+
+  .cell.completed:not(.info-cell)::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to top right,
+      transparent calc(50% - 1.6px),
+      var(--accent) calc(50% - 1.6px),
+      var(--accent) calc(50% + 1.6px),
+      transparent calc(50% + 1.6px)
+    );
+    pointer-events: none;
+    z-index: 3;
+    opacity: 0.88;
+  }
+
+  .cell.cancelled:not(.info-cell)::before,
+  .cell.cancelled:not(.info-cell)::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  .cell.cancelled:not(.info-cell)::before {
+    background: linear-gradient(
+      to top right,
+      transparent calc(50% - 1.6px),
+      var(--accent) calc(50% - 1.6px),
+      var(--accent) calc(50% + 1.6px),
+      transparent calc(50% + 1.6px)
+    );
+    opacity: 0.88;
+  }
+
+  .cell.cancelled:not(.info-cell)::after {
+    background: linear-gradient(
+      to top left,
+      transparent calc(50% - 1.6px),
+      var(--accent) calc(50% - 1.6px),
+      var(--accent) calc(50% + 1.6px),
+      transparent calc(50% + 1.6px)
+    );
+    opacity: 0.88;
+  }
+
+  .cell-content {
+    flex: 1 1 auto;
+    padding: 14px 16px 12px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    cursor: text;
+    font-size: 13px;
+    line-height: 1.65;
+    word-wrap: break-word;
+    min-height: 0;
+  }
+
+  .cell-content > *:first-child { margin-top: 0; }
+  .cell-content > *:last-child { margin-bottom: 0; }
+  .cell-content h1 { font-size: 18px; font-weight: 600; margin: 6px 0; }
+  .cell-content h2 { font-size: 16px; font-weight: 600; margin: 5px 0; }
+  .cell-content h3 { font-size: 14px; font-weight: 600; margin: 4px 0; color: var(--text-secondary); }
+  .cell-content p { margin: 4px 0; }
+  .cell-content ul, .cell-content ol { margin: 4px 0 4px 20px; }
+  .cell-content li { margin: 2px 0; }
+  .cell-content strong { font-weight: 600; }
+  .cell-content em { font-style: italic; color: var(--text-secondary); }
+  .cell-content a {
+    color: var(--info-accent);
+    text-decoration: none;
+    border-bottom: 1px solid currentColor;
+  }
+  .cell-content a:hover { color: var(--accent); }
+  .cell-content code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: var(--bg-soft);
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+  .cell-content blockquote {
+    border-left: 2px solid var(--border-strong);
+    padding-left: 10px;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: 4px 0;
+  }
+  .cell-content hr {
+    border: none;
+    border-top: 1px dashed var(--border-strong);
+    margin: 8px 0;
+  }
+  .cell-content .placeholder {
+    color: var(--text-faint);
+    font-style: italic;
+    font-size: 13px;
+  }
+
+  .cell-textarea {
+    flex: 1 1 auto;
+    padding: 14px 16px 12px;
+    font-family: var(--font-serif);
+    font-size: 13px;
+    line-height: 1.65;
+    background: var(--bg-card);
+    resize: none;
+    width: 100%;
+    color: var(--text);
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .cell-actions {
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity var(--transition);
+    z-index: 4;
+  }
+
+  .cell:hover .cell-actions { opacity: 1; }
+  .cell.editing .cell-actions { display: none; }
+
+  .cell-action {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .cell-action:hover { background: var(--bg-hover); color: var(--text); }
+  .cell-action.complete:hover { background: var(--accent); color: white; border-color: var(--accent); }
+  .cell-action.cancel:hover { background: var(--accent); color: white; border-color: var(--accent); }
+  .cell-action svg { width: 12px; height: 12px; }
+
+  /* INFO CELL - compact layout: date+weekday one line, weather+location one line */
+  .info-cell {
+    background: var(--bg-info);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: auto;
+    justify-content: flex-start;
+  }
+
+  .info-date-line {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    line-height: 1.3;
+    position: relative;
+  }
+
+  .info-date-text {
+    font-size: 13px;
+    color: var(--text);
+    font-family: var(--font-serif);
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .info-important-list {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin: 4px 0;
+  }
+
+  .info-important-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 7px;
+    background: var(--gold-soft);
+    border-left: 2px solid var(--gold);
+    border-radius: 3px;
+    font-size: 11px;
+    color: var(--text);
+  }
+
+  .info-important-item.is-lunar {
+    background: linear-gradient(90deg, var(--gold-soft) 0%, rgba(244, 236, 212, 0.3) 100%);
+  }
+
+  .info-important-item .star {
+    color: var(--gold);
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+
+  .info-important-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1 1 auto;
+  }
+
+  .info-today-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text);
+    font-family: var(--font-serif);
+    padding: 6px 0;
+    border-top: 1px dashed var(--border-strong);
+    border-bottom: 1px dashed var(--border-strong);
+    flex-wrap: wrap;
+  }
+
+  .info-weather-text { font-weight: 500; }
+  .info-divider { color: var(--text-faint); }
+  .info-location-text { font-weight: 500; }
+
+
+
+  .info-date {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+    position: relative;
+  }
+
+  .info-day-num {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+    font-family: var(--font-serif);
+  }
+
+  .info-month-year {
+    font-size: 13px;
+    color: var(--text-secondary);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: var(--font-sans);
+  }
+
+  .info-weekday {
+    font-size: 9px;
+    color: var(--text-secondary);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    font-family: var(--font-sans);
+    border-bottom: 1px dashed var(--border-strong);
+    padding-bottom: 3px;
+  }
+
+  .info-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 2px;
+    margin-top: auto;
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    padding-top: 3px;
+    border-top: 1px dashed var(--border);
+  }
+
+  .info-meta-row { display: flex; align-items: center; gap: 8px; }
+  .info-meta-row .info-meta-text { transition: opacity 200ms; }
+  .info-meta-row .info-meta-text.loading { opacity: 0.4; }
+  .info-meta-refresh, .info-meta-action {
+    margin-left: auto;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid transparent;
+    opacity: 0;
+    transition: var(--transition);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  .info-meta-action { margin-left: 4px; font-size: 12px; }
+  .info-meta-row:hover .info-meta-refresh,
+  .info-meta-row:hover .info-meta-action { opacity: 0.7; }
+  .info-meta-refresh:hover,
+  .info-meta-action:hover { opacity: 1 !important; background: var(--bg-card); border-color: var(--border); color: var(--text); }
+  .info-meta-action.loading { animation: spin 1s linear infinite; opacity: 1 !important; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .info-meta-row svg { width: 12px; height: 12px; opacity: 0.6; flex-shrink: 0; }
+  .info-meta-row { cursor: pointer; padding: 2px 4px; margin: -2px -4px; border-radius: 3px; transition: var(--transition); }
+  .info-meta-row:hover { background: rgba(255,255,255,0.5); color: var(--text); }
+
+  .info-important {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 4px;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .info-important-item {
+    font-size: 11px;
+    color: var(--text);
+    padding: 2px 6px;
+    background: var(--gold-soft);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 1.25;
+    border-left: 2px solid var(--gold);
+    font-weight: 500;
+  }
+
+  .info-important-item .star { color: var(--gold); font-size: 11px; flex-shrink: 0; }
+  .info-important-item.is-lunar {
+    background: linear-gradient(90deg, var(--gold-soft) 0%, rgba(244, 236, 212, 0.3) 100%);
+    border-left-color: var(--gold-dark, #B8932E);
+  }
+  .info-important-title-text { flex: 1 1 auto; }
+  .info-important-sub {
+    font-size: 9px;
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+    background: rgba(255,255,255,0.5);
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+
+  .info-empty-inline {
+    font-size: 11px;
+    color: var(--text-faint);
+    font-style: italic;
+    padding: 4px 0;
+    line-height: 1.3;
+  }
+
+  .info-important-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    background: var(--gold);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 0 0 0 6px;
+    font-family: var(--font-sans);
+    letter-spacing: 0.5px;
+  }
+
+  .info-important-badge svg { width: 10px; height: 10px; }
+
+  .info-hint {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 8px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    font-family: var(--font-sans);
+    letter-spacing: 0.1px;
+    line-height: 1.2;
+    padding: 1px 4px;
+    background: var(--bg-card);
+    border-radius: 2px;
+    border: 1px dashed var(--border);
+  }
+
+  .info-hint.source-user { color: var(--info-accent); border-color: var(--info-accent); border-style: solid; background: var(--info-bg); }
+  .info-hint.source-geo { color: var(--info-accent); }
+  .info-hint.source-ip { color: var(--text-muted); }
+
+  .info-hint svg { width: 10px; height: 10px; flex-shrink: 0; opacity: 0.6; }
+
+  .info-edit-btn {
+    font-size: 9px;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-strong);
+    padding: 3px 7px;
+    border-radius: 3px;
+    align-self: flex-start;
+    margin-top: 3px;
+    transition: var(--transition);
+    letter-spacing: 0.5px;
+    font-family: var(--font-sans);
+  }
+
+  .info-edit-btn:hover { background: var(--text); color: var(--bg); border-color: var(--text); }
+</style>
+<style>
+  /* WEEK VIEW */
+  #week-view .week-grid {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .week-day {
+    background: var(--bg-card);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: background var(--transition);
+    cursor: pointer;
+  }
+
+  .week-day:hover { background: var(--bg-hover); }
+  .week-day.today { background: var(--bg-today); }
+  .week-day.weekend { background: var(--bg-weekend); }
+
+  .week-day-header {
+    padding: 12px 10px;
+    border-bottom: 1px solid var(--border-soft);
+    text-align: center;
+    flex: 0 0 auto;
+  }
+
+  .week-day-name {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: var(--font-sans);
+    margin-bottom: 2px;
+  }
+
+  .week-day-num {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    font-family: var(--font-serif);
+  }
+
+  .week-day.today .week-day-num {
+    background: var(--text);
+    color: var(--bg);
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    border-radius: 50%;
+    margin: 2px auto 0;
+    display: inline-block;
+  }
+
+  .week-day-body {
+    flex: 1 1 auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .week-cell-mini {
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding: 4px 6px;
+    background: var(--bg-soft);
+    border-radius: 3px;
+    line-height: 1.4;
+    border-left: 2px solid var(--border-strong);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .week-cell-mini.completed { border-left-color: var(--accent); text-decoration: line-through; color: var(--text-muted); }
+  .week-cell-mini.cancelled { border-left-color: var(--accent); color: var(--text-muted); opacity: 0.6; }
+
+  .week-day-empty {
+    font-size: 11px;
+    color: var(--text-faint);
+    text-align: center;
+    padding: 20px 0;
+    font-style: italic;
+  }
+
+  .week-important-dot {
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    background: var(--gold);
+    border-radius: 50%;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  /* MONTH VIEW */
+  #month-view .month-container {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .month-header-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: var(--bg-info);
+    border-bottom: 1px solid var(--border);
+    flex: 0 0 auto;
+  }
+
+  .month-dow {
+    padding: 10px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-secondary);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: var(--font-sans);
+  }
+
+  .month-grid {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: 1fr;
+    gap: 1px;
+    background: var(--border);
+    min-height: 0;
+  }
+
+  .month-cell {
+    background: var(--bg-card);
+    padding: 8px 10px 10px;
+    cursor: pointer;
+    transition: background var(--transition);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+    position: relative;
+  }
+
+  .month-cell:hover { background: var(--bg-hover); }
+  .month-cell.other-month { background: var(--bg-soft); }
+  .month-cell.other-month .month-day-num { color: var(--text-faint); }
+  .month-cell.weekend { background: var(--bg-weekend); }
+  .month-cell.today { background: var(--bg-today); }
+  .month-cell.today .month-day-num {
+    background: var(--text);
+    color: var(--bg);
+    width: 26px;
+    height: 26px;
+    line-height: 26px;
+    border-radius: 50%;
+    text-align: center;
+  }
+
+  .month-day-num {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+    font-family: var(--font-serif);
+    line-height: 1;
+  }
+
+  .month-progress-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+  }
+
+  .month-progress-bar {
+    flex: 1 1 auto;
+    height: 3px;
+    background: var(--border-soft);
+    border-radius: 2px;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  .month-progress-fill {
+    display: block;
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 220ms ease;
+  }
+
+  .month-progress-text {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+    min-width: 30px;
+    text-align: right;
+  }
+
+  .month-previews {
+    list-style: none;
+    margin: 0;
+    padding: 0 2px 0 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    min-height: 0;
+    scrollbar-width: thin;
+  }
+
+  .month-previews li {
+    position: relative;
+    padding-left: 10px;
+    margin-bottom: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-serif);
+    line-height: 1.4;
+  }
+
+  .month-previews li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--border-strong);
+  }
+
+  .month-important {
+    font-size: 10px;
+    color: var(--gold-dark, #B8932E);
+    margin-top: auto;
+    font-family: var(--font-sans);
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding-top: 4px;
+    border-top: 1px dashed var(--border-soft);
+  }
+
+  .month-important svg { width: 10px; height: 10px; flex-shrink: 0; }
+  .month-important span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .month-cell.other-month .month-previews,
+  .month-cell.other-month .month-progress-row { opacity: 0.55; }
+
+  /* YEAR VIEW */
+  #year-view .year-grid {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 12px;
+    min-height: 0;
+  }
+
+  .year-month {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 12px 12px 10px;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .year-month:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--border-strong);
+  }
+
+  .year-month-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+    letter-spacing: 1.5px;
+    text-align: center;
+    font-family: var(--font-serif);
+  }
+
+  .year-month-grid {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: 1fr;
+    gap: 1px;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .year-dow-cell {
+    font-size: 9px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 1px 0;
+    font-family: var(--font-sans);
+    line-height: 1;
+  }
+
+  .year-day-cell {
+    background: var(--bg-soft);
+    border-radius: 2px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    font-family: var(--font-serif);
+    line-height: 1;
+    min-height: 18px;
+    overflow: visible;
+  }
+
+  .year-day-cell.has-content { background: var(--info-accent); color: white; font-weight: 600; }
+  .year-day-cell.has-completed { background: var(--accent); color: white; }
+  .year-day-cell.has-important { box-shadow: inset 0 0 0 2px var(--gold); }
+  .year-day-cell.other-month { opacity: 0.3; }
+  .year-day-cell.today { background: var(--text); color: var(--bg); font-weight: 700; }
+
+  /* MODAL */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    backdrop-filter: blur(2px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 200ms ease;
+    padding: 20px;
+  }
+
+  .modal {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 580px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: slideUp 240ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .modal-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border-soft);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-title { font-size: 16px; font-weight: 600; letter-spacing: 1px; }
+
+  .modal-close {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: var(--text-secondary);
+    transition: var(--transition);
+  }
+
+  .modal-close:hover { background: var(--bg-hover); color: var(--text); }
+
+  .modal-body { flex: 1 1 auto; padding: 20px 24px; overflow-y: auto; }
+
+  .modal-footer {
+    padding: 14px 24px;
+    border-top: 1px solid var(--border-soft);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .btn {
+    padding: 8px 18px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    transition: var(--transition);
+    letter-spacing: 1px;
+    font-family: var(--font-serif);
+  }
+
+  .btn-primary { background: var(--text); color: var(--bg); }
+  .btn-primary:hover { background: #000; }
+  .btn-secondary { background: var(--bg-soft); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--bg-hover); }
+
+  .form-row { margin-bottom: 16px; }
+
+  .form-label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+    font-family: var(--font-sans);
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+    font-size: 14px;
+    transition: var(--transition);
+  }
+
+  .form-input:focus { border-color: var(--text); }
+
+  .important-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  .important-list-header h4 {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: 0.5px;
+    font-family: var(--font-serif);
+  }
+
+  .important-list-header .count {
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--bg-soft);
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+
+  #important-list {
+    max-height: 240px;
+    overflow-y: auto;
+    padding: 4px 2px;
+    margin-bottom: 8px;
+  }
+
+  .important-day-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--bg-soft);
+    border-radius: var(--radius);
+    margin-bottom: 6px;
+    border-left: 3px solid var(--gold);
+  }
+
+  .important-day-item.is-lunar {
+    background: linear-gradient(90deg, var(--bg-soft) 0%, var(--gold-soft) 100%);
+    border-left-color: var(--gold-dark, #B8932E);
+  }
+
+  .important-day-item:hover {
+    background: var(--gold-soft);
+  }
+
+  .important-day-item.is-lunar:hover {
+    background: linear-gradient(90deg, var(--gold-soft) 0%, rgba(244, 236, 212, 0.5) 100%);
+  }
+
+  .add-type-tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-soft);
+    padding: 3px;
+    border-radius: 6px;
+    border: 1px solid var(--border-soft);
+    margin-bottom: 10px;
+    width: fit-content;
+  }
+
+  .type-tab {
+    padding: 4px 14px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    transition: var(--transition);
+    font-family: var(--font-serif);
+  }
+
+  .type-tab:hover { color: var(--text); }
+  .type-tab.active {
+    background: var(--bg-card);
+    color: var(--text);
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .add-fields { display: flex; gap: 8px; align-items: center; flex: 1 1 auto; }
+  .add-fields.hidden { display: none; }
+
+  .form-select {
+    cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 24px;
+  }
+
+  .lunar-leap-check, .recurring-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font-sans);
+    padding: 4px 8px;
+    background: var(--bg-soft);
+    border: 1px solid var(--border-soft);
+    border-radius: 4px;
+    width: fit-content;
+  }
+  .lunar-leap-check input, .recurring-check input { cursor: pointer; }
+  .lunar-leap-check:hover, .recurring-check:hover { background: var(--gold-soft); }
+
+  .important-day-item .star { color: var(--gold); font-size: 13px; flex-shrink: 0; }
+
+  .important-day-text {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .important-day-title {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .important-day-date {
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 1px 4px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 3px;
+    align-self: flex-start;
+    margin-top: 1px;
+  }
+
+  .important-day-remove {
+    color: var(--text-muted);
+    padding: 4px;
+    transition: var(--transition);
+    flex-shrink: 0;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .important-day-remove:hover { color: var(--accent); background: var(--bg-card); }
+
+  .add-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border);
+  }
+
+  .add-row .form-input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .add-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .btn-add-confirm {
+    align-self: flex-end;
+    margin-top: 4px;
+  }
+
+  .lunar-selects {
+    display: flex;
+    gap: 8px;
+  }
+
+  .lunar-selects select {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    #day-view .grid {
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+    }
+    .year-grid { grid-template-columns: repeat(3, 1fr) !important; }
+  }
+
+  @media (max-width: 640px) {
+    #app { padding: 0 12px; }
+    header {
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 12px 0 10px;
+    }
+    .brand-title { font-size: 18px; }
+    .brand-sub { display: none; }
+    .view-tab { padding: 5px 12px; font-size: 12px; }
+    .date-display { font-size: 13px; min-width: 120px; padding: 4px 8px; }
+    .nav-btn { width: 28px; height: 28px; }
+    .today-btn { font-size: 11px; padding: 4px 10px; }
+    main { padding: 10px 0 12px; }
+    #day-view .grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: repeat(16, minmax(80px, 1fr));
+    }
+    #week-view .week-grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: repeat(7, 1fr);
+      overflow-y: auto;
+    }
+    .year-grid { grid-template-columns: repeat(2, 1fr) !important; }
+    .info-day-num { font-size: 28px; }
+    .cell-content { padding: 10px 12px 8px; font-size: 12px; }
+    .modal { max-width: 100%; margin: 0 12px; }
+    .lunar-selects { flex-direction: column; }
+  }
+
+  @media (max-width: 380px) {
+    .year-grid { grid-template-columns: 1fr !important; }
+  }
+
+  .hidden { display: none !important; }
+  .visually-hidden {
+    position: absolute !important;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0);
+    border: 0;
+  }
+</style>
+
+<script>
+const STORAGE_KEY = 'one-page-planner:v1';
+
+const Store = {
+  data: null,
+  _saveTimer: null,
+
+  load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      this.data = raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      console.warn('Failed to load data', e);
+      this.data = null;
+    }
+    if (!this.data) {
+      this.data = {
+        cells: {},
+        importantDays: [],
+        settings: { location: '', weather: '', city: '', locationSource: 'manual', geo: null, weatherDisabled: false }
+      };
+    }
+    if (!this.data.importantDays) this.data.importantDays = [];
+    if (!this.data.settings) this.data.settings = { location: '', weather: '', city: '', locationSource: 'manual', geo: null };
+    if (!('city' in this.data.settings)) this.data.settings.city = '';
+    if (!('locationSource' in this.data.settings)) this.data.settings.locationSource = 'manual';
+    if (!('geo' in this.data.settings)) this.data.settings.geo = null;
+    if (!('weatherDisabled' in this.data.settings)) this.data.settings.weatherDisabled = false;
+    if (!this.data.cells) this.data.cells = {};
+
+    // 数据迁移: 旧的阳历带完整日期 → 改为 recurring 模式 (每年重复)
+    this.data.importantDays = this.data.importantDays.map(item => {
+      if (item.type === 'solar' && item.date && !('recurring' in item)) {
+        const parts = item.date.split('-');
+        if (parts.length === 3) {
+          return {
+            ...item,
+            month: parseInt(parts[1]),
+            day: parseInt(parts[2]),
+            recurring: true
+          };
+        }
+      }
+      if (item.type === 'lunar' && !('recurring' in item)) {
+        item.recurring = true;
+      }
+      return item;
+    });
+  },
+
+  save() {
+    clearTimeout(this._saveTimer);
+    this._saveTimer = setTimeout(() => {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
+      } catch (e) {
+        console.warn('Failed to save data', e);
+      }
+    }, 200);
+  },
+
+  getCell(dateStr, index) {
+    const day = this.data.cells[dateStr];
+    if (!day) return { content: '', status: 'active' };
+    return day[index] || { content: '', status: 'active' };
+  },
+
+  setCell(dateStr, index, content) {
+    if (!this.data.cells[dateStr]) this.data.cells[dateStr] = {};
+    if (!this.data.cells[dateStr][index]) this.data.cells[dateStr][index] = { content: '', status: 'active' };
+    this.data.cells[dateStr][index].content = content;
+    this.save();
+  },
+
+  setCellStatus(dateStr, index, status) {
+    if (!this.data.cells[dateStr]) this.data.cells[dateStr] = {};
+    if (!this.data.cells[dateStr][index]) this.data.cells[dateStr][index] = { content: '', status: 'active' };
+    this.data.cells[dateStr][index].status = status;
+    this.save();
+  },
+
+  getDayIndicators(dateStr) {
+    const day = this.data.cells[dateStr];
+    if (!day) return { completed: 0, cancelled: 0, active: 0, total: 16 };
+    let completed = 0, cancelled = 0, active = 0;
+    for (let i = 0; i < 16; i++) {
+      const c = day[i];
+      if (!c || !c.content || !c.content.trim()) continue;
+      if (c.status === 'completed') completed++;
+      else if (c.status === 'cancelled') cancelled++;
+      else active++;
+    }
+    return { completed, cancelled, active, total: 16 };
+  },
+
+  getDayPreviews(dateStr, max = 3) {
+    const day = this.data.cells[dateStr];
+    if (!day) return [];
+    const out = [];
+    for (let i = 1; i < 16 && out.length < max; i++) {
+      const c = day[i];
+      if (!c || !c.content || !c.content.trim()) continue;
+      if (c.status !== 'active') continue;
+      out.push(extractTitle(c.content));
+    }
+    return out;
+  },
+
+  getImportantDays() { return this.data.importantDays; },
+
+  addImportantDay(opts) {
+    // opts: { type: 'solar'|'lunar', date?, month?, day?, isLeap?, recurring?, title }
+    const id = Date.now() + Math.random().toString(36).slice(2, 6);
+    const recurring = opts.recurring !== false; // default true (每年重复)
+    const item = {
+      id,
+      title: opts.title,
+      type: opts.type || 'solar',
+      recurring
+    };
+    if (item.type === 'lunar') {
+      // 阴历天然就是 recurring (每年重复)
+      item.month = opts.month;
+      item.day = opts.day;
+      item.isLeap = !!opts.isLeap;
+      item.recurring = true;
+    } else if (recurring) {
+      // 阳历 recurring: 只存月日
+      item.month = opts.month;
+      item.day = opts.day;
+    } else {
+      // 阳历 one-time: 存完整日期
+      item.date = opts.date;
+    }
+    this.data.importantDays.push(item);
+    this.save();
+    return item;
+  },
+
+  removeImportantDay(id) {
+    this.data.importantDays = this.data.importantDays.filter(d => d.id !== id);
+    this.save();
+  },
+
+  getImportantDaysForDate(dateStr) {
+    const d = new Date(dateStr);
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1;
+    const day = d.getDate();
+    return this.data.importantDays.filter(item => {
+      if (item.type === 'lunar') {
+        // 阴历: 每年重复, 转为该年阳历对比
+        const solar = lunarToSolar(year, item.month, item.day, item.isLeap);
+        if (!solar) return false;
+        return solar.getFullYear() === year &&
+               solar.getMonth() + 1 === month &&
+               solar.getDate() === day;
+      }
+      // Solar
+      if (item.recurring) {
+        // 阳历 recurring: 只比对月日
+        return item.month === month && item.day === day;
+      }
+      // Solar one-time: 比对完整日期
+      return item.date === dateStr;
+    });
+  },
+
+  getSettings() { return this.data.settings; },
+
+  updateSettings(patch) {
+    this.data.settings = { ...this.data.settings, ...patch };
+    this.save();
+  }
+};
+
+/* =====================================================================
+ *  DATE UTILS
+ * ===================================================================== */
+const DateUtil = {
+  pad(n) { return String(n).padStart(2, '0'); },
+
+  toKey(d) { return `${d.getFullYear()}-${this.pad(d.getMonth()+1)}-${this.pad(d.getDate())}`; },
+
+  fromKey(key) {
+    const [y, m, d] = key.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  },
+
+  isSameDay(a, b) {
+    return a.getFullYear() === b.getFullYear() &&
+           a.getMonth() === b.getMonth() &&
+           a.getDate() === b.getDate();
+  },
+
+  startOfWeek(d) {
+    const x = new Date(d);
+    const day = x.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    x.setDate(x.getDate() + diff);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  },
+
+  startOfMonth(d) { return new Date(d.getFullYear(), d.getMonth(), 1); },
+  startOfYear(d) { return new Date(d.getFullYear(), 0, 1); },
+
+  addDays(d, n) {
+    const x = new Date(d);
+    x.setDate(x.getDate() + n);
+    return x;
+  },
+  addMonths(d, n) {
+    const x = new Date(d);
+    x.setMonth(x.getMonth() + n);
+    return x;
+  },
+  addYears(d, n) {
+    const x = new Date(d);
+    x.setFullYear(x.getFullYear() + n);
+    return x;
+  },
+
+  weekdayCN(d) {
+    return ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][d.getDay()];
+  },
+
+  weekdayCNShort(d) {
+    return '周' + ['日','一','二','三','四','五','六'][d.getDay()];
+  },
+
+  formatMonthYear(d) { return `${d.getFullYear()} 年 ${d.getMonth()+1} 月`; },
+  formatYear(d) { return `${d.getFullYear()} 年`; },
+  formatDay(d) { return `${d.getMonth()+1} 月 ${d.getDate()} 日`; },
+
+  formatDateLong(d) {
+    const weekdays = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    return `${d.getFullYear()}-${this.pad(d.getMonth()+1)}-${this.pad(d.getDate())} ${weekdays[d.getDay()]}`;
+  },
+
+  formatDateShort(d) {
+    return `${d.getFullYear()}-${this.pad(d.getMonth()+1)}-${this.pad(d.getDate())}`;
+  }
+};
+
+/* =====================================================================
+ *  MARKDOWN PARSER  —  lightweight, safe (no external deps)
+ * ===================================================================== */
+function escapeHTML(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function parseInline(text) {
+  let s = escapeHTML(text);
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, t, u) => {
+    const safe = /^https?:\/\//i.test(u) || /^mailto:/i.test(u) ? u : '#';
+    return `<a href="${safe}" target="_blank" rel="noopener noreferrer">${t}</a>`;
+  });
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[^*\w])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+  s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  return s;
+}
+
+function parseMarkdown(text) {
+  if (!text || !text.trim()) return '';
+  const lines = text.split('\n');
+  const out = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    let m;
+
+    if (m = line.match(/^###\s+(.+)$/)) { out.push(`<h3>${parseInline(m[1])}</h3>`); i++; continue; }
+    if (m = line.match(/^##\s+(.+)$/))  { out.push(`<h2>${parseInline(m[1])}</h2>`); i++; continue; }
+    if (m = line.match(/^#\s+(.+)$/))   { out.push(`<h1>${parseInline(m[1])}</h1>`); i++; continue; }
+
+    if (/^---+\s*$/.test(line)) { out.push('<hr/>'); i++; continue; }
+
+    if (m = line.match(/^>\s?(.*)$/)) {
+      let body = parseInline(m[1]);
+      while (i + 1 < lines.length && (m = lines[i+1].match(/^>\s?(.*)$/))) {
+        body += '<br>' + parseInline(m[1]);
+        i++;
+      }
+      out.push(`<blockquote>${body}</blockquote>`);
+      i++; continue;
+    }
+
+    if (/^[-*]\s+/.test(line)) {
+      const items = [];
+      while (i < lines.length && /^[-*]\s+/.test(lines[i])) {
+        items.push(`<li>${parseInline(lines[i].replace(/^[-*]\s+/, ''))}</li>`);
+        i++;
+      }
+      out.push(`<ul>${items.join('')}</ul>`);
+      continue;
+    }
+
+    if (/^\d+\.\s+/.test(line)) {
+      const items = [];
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
+        items.push(`<li>${parseInline(lines[i].replace(/^\d+\.\s+/, ''))}</li>`);
+        i++;
+      }
+      out.push(`<ol>${items.join('')}</ol>`);
+      continue;
+    }
+
+    if (!line.trim()) { i++; continue; }
+
+    let para = parseInline(line);
+    while (i + 1 < lines.length && lines[i+1].trim() &&
+           !/^#{1,3}\s/.test(lines[i+1]) &&
+           !/^[-*]\s+/.test(lines[i+1]) &&
+           !/^\d+\.\s+/.test(lines[i+1]) &&
+           !/^>\s?/.test(lines[i+1]) &&
+           !/^---+\s*$/.test(lines[i+1])) {
+      i++;
+      para += '<br>' + parseInline(lines[i]);
+    }
+    out.push(`<p>${para}</p>`);
+    i++;
+  }
+
+  return out.join('');
+}
+
+function stripMarkdown(text) {
+  return text
+    .replace(/^#{1,3}\s+/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/^[-*]\s+/gm, '· ')
+    .replace(/^\d+\.\s+/gm, '· ')
+    .replace(/^>\s?/gm, '')
+    .replace(/\n+/g, ' ')
+    .trim();
+}
+
+// Extract a short title from markdown content for month-view previews:
+//   1) if there is a '# heading' line, use the heading text
+//   2) else use the first non-empty line, stripped of basic markdown
+//   3) truncated to ~24 chars with ellipsis
+function extractTitle(content) {
+  if (!content) return '';
+  const lines = content.split('\n');
+  for (const line of lines) {
+    const m = line.match(/^#{1,3}\s+(.+)$/);
+    if (m) {
+      const t = m[1].trim();
+      return t.length > 24 ? t.slice(0, 24) + '…' : t;
+    }
+  }
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+    const stripped = t
+      .replace(/^[-*]\s+/, '')
+      .replace(/^\d+\.\s+/, '')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+    return stripped.length > 24 ? stripped.slice(0, 24) + '…' : stripped;
+  }
+  return '';
+}
+
+/* =====================================================================
+ *  ICONS  (inline SVG strings)
+ * ===================================================================== */
+const ICONS = {
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  restore: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+  sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m4.93 19.07 1.41-1.41"/><path d="m17.66 6.34 1.41-1.41"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>'
+};
+
+/* =====================================================================
+ *  DAY VIEW
+ * ===================================================================== */
+const DayView = {
+  render(date) {
+    const dateStr = DateUtil.toKey(date);
+    const grid = document.getElementById('day-grid');
+    grid.innerHTML = '';
+
+    grid.appendChild(this.buildInfoCell(date));
+
+    for (let i = 1; i < 16; i++) {
+      grid.appendChild(this.buildCell(dateStr, i));
+    }
+  },
+
+  buildInfoCell(date) {
+    const cell = document.createElement('div');
+    cell.className = 'cell info-cell';
+
+    const dateStr = DateUtil.toKey(date);
+    const today = new Date();
+    const isToday = DateUtil.isSameDay(date, today);
+    const settings = Store.getSettings();
+    const wDisp = Weather.getDisplayWeather();
+    const important = Store.getImportantDaysForDate(dateStr);
+
+    // 提取天气描述（去掉温度）
+    let weatherDesc = (wDisp.weather || '').replace(/\s*-?\d+\s*[°º]\s*C?\s*$/i, '').replace(/\s*-?\d+\s*°\s*$/i, '').trim();
+    if (!weatherDesc || weatherDesc === '未知天气' || weatherDesc === '未知') weatherDesc = '';
+
+    // 地点：去掉国家名
+    let displayLoc = wDisp.location || '';
+    if (displayLoc.includes('·')) {
+      displayLoc = displayLoc.split('·')[0].trim();
+    }
+    if (displayLoc === '未知位置' || displayLoc === '—' || displayLoc === '未知') displayLoc = '';
+
+    // 整行日期+星期
+    const dateLine = `${date.getFullYear()} 年 ${date.getMonth()+1} 月 ${date.getDate()} 日 · ${DateUtil.weekdayCN(date)}`;
+
+    cell.innerHTML = `
+      <div class="info-date-line">
+        <span class="info-date-text">${dateLine}</span>
+        ${important.length > 0 ? `<span class="info-important-badge" title="${important.length} 个重要日子">⭐ ${important.length}</span>` : ''}
+      </div>
+      ${important.length > 0 ? `
+        <div class="info-important-list">
+          ${important.map(d => {
+            const isLunar = d.type === 'lunar';
+            return `<div class="info-important-item ${isLunar ? 'is-lunar' : ''}">
+              <span class="star">${ICONS.star}</span>
+              <span class="info-important-title">${escapeHTML(d.title)}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      ` : ''}
+      ${isToday ? `
+        <div class="info-today-row">
+          ${weatherDesc ? `<span class="info-weather-text">${escapeHTML(weatherDesc)}</span>` : ''}
+          ${weatherDesc && displayLoc ? `<span class="info-divider">·</span>` : ''}
+          ${displayLoc ? `<span class="info-location-text">${escapeHTML(displayLoc)}</span>` : ''}
+          <button class="info-meta-action" data-action="geo" title="重新定位">📍</button>
+        </div>
+      ` : ''}
+    `;
+
+    // Location button handler
+    const geoBtn = cell.querySelector('[data-action="geo"]');
+    if (geoBtn) {
+      geoBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          Store.updateSettings({ city: '' });
+          await Weather.refreshGeolocation();
+          App.render();
+        } catch (err) {
+          const city = prompt('无法获取浏览器定位。请手动输入城市：');
+          if (city && city.trim()) {
+            Store.updateSettings({ city: city.trim() });
+            await Weather.refresh();
+          }
+        }
+      });
+    }
+
+    return cell;
+  },
+
+  buildCell(dateStr, index) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.index = index;
+    cell.tabIndex = 0;
+
+    const data = Store.getCell(dateStr, index);
+    cell.classList.add(data.status);
+
+    const content = document.createElement('div');
+    content.className = 'cell-content';
+    this.renderContent(content, data.content);
+    cell.appendChild(content);
+
+    // status is communicated visually via the diagonal line / X overlay and the restore button
+
+    const actions = document.createElement('div');
+    actions.className = 'cell-actions';
+    if (data.status === 'active') {
+      actions.innerHTML = `
+        <button class="cell-action complete" title="标记完成">${ICONS.check}</button>
+        <button class="cell-action cancel" title="标记取消">${ICONS.x}</button>
+      `;
+    } else {
+      actions.innerHTML = `
+        <button class="cell-action restore" title="恢复原状">${ICONS.restore}</button>
+      `;
+    }
+    cell.appendChild(actions);
+
+    content.addEventListener('click', () => this.enterEdit(cell, dateStr, index));
+
+    actions.querySelector('.complete')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      Store.setCellStatus(dateStr, index, 'completed');
+      App.render();
+    });
+
+    actions.querySelector('.cancel')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      Store.setCellStatus(dateStr, index, 'cancelled');
+      App.render();
+    });
+
+    actions.querySelector('.restore')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      Store.setCellStatus(dateStr, index, 'active');
+      App.render();
+    });
+
+    return cell;
+  },
+
+  renderContent(el, markdown) {
+    if (markdown && markdown.trim()) {
+      el.innerHTML = parseMarkdown(markdown);
+    } else {
+      el.innerHTML = '<div class="placeholder">点击此处开始书写…</div>';
+    }
+  },
+
+  enterEdit(cell, dateStr, index) {
+    if (cell.classList.contains('editing')) return;
+    cell.classList.add('editing');
+
+    const data = Store.getCell(dateStr, index);
+    const currentContent = data.content;
+
+    const content = cell.querySelector('.cell-content');
+    const textarea = document.createElement('textarea');
+    textarea.className = 'cell-textarea';
+    textarea.value = currentContent;
+    textarea.placeholder = '支持 Markdown：# 标题、**加粗**、*斜体*、[链接](url)、- 列表…';
+    textarea.spellcheck = false;
+
+    cell.replaceChild(textarea, content);
+    textarea.focus();
+    textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+
+    let saved = false;
+    const save = () => {
+      if (saved) return;
+      saved = true;
+      const newContent = textarea.value;
+      if (newContent !== currentContent) {
+        Store.setCell(dateStr, index, newContent);
+      }
+      App.render();
+    };
+
+    textarea.addEventListener('blur', save);
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        save();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        save();
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        save();
+        const nextIndex = index === 15 ? 1 : index + 1;
+        setTimeout(() => {
+          const nextCell = document.querySelector(`#day-grid .cell[data-index="${nextIndex}"]`);
+          if (nextCell) nextCell.querySelector('.cell-content')?.click();
+        }, 60);
+      }
+      e.stopPropagation();
+    });
+  }
+};
+
+/* =====================================================================
+ *  WEEK VIEW
+ * ===================================================================== */
+const WeekView = {
+  render(date) {
+    const start = DateUtil.startOfWeek(date);
+    const grid = document.getElementById('week-grid');
+    grid.innerHTML = '';
+
+    const today = new Date();
+    for (let i = 0; i < 7; i++) {
+      const d = DateUtil.addDays(start, i);
+      const dateStr = DateUtil.toKey(d);
+      const day = document.createElement('div');
+      day.className = 'week-day';
+      if (DateUtil.isSameDay(d, today)) day.classList.add('today');
+      if (d.getDay() === 0 || d.getDay() === 6) day.classList.add('weekend');
+
+      const important = Store.getImportantDaysForDate(dateStr);
+
+      let cellSummaries = '';
+      for (let idx = 1; idx < 16; idx++) {
+        const c = Store.getCell(dateStr, idx);
+        if (c.content && c.content.trim()) {
+          const plain = stripMarkdown(c.content);
+          if (plain) {
+            const cls = c.status === 'completed' ? 'completed' : c.status === 'cancelled' ? 'cancelled' : '';
+            cellSummaries += `<div class="week-cell-mini ${cls}" title="${escapeHTML(plain)}">${escapeHTML(plain)}</div>`;
+          }
+        }
+      }
+
+      const importantDot = important.length ? '<span class="week-important-dot"></span>' : '';
+
+      day.innerHTML = `
+        <div class="week-day-header">
+          <div class="week-day-name">${DateUtil.weekdayCNShort(d)}${importantDot}</div>
+          <div class="week-day-num">${d.getDate()}</div>
+        </div>
+        <div class="week-day-body">
+          ${cellSummaries || '<div class="week-day-empty">空白的一天</div>'}
+        </div>
+      `;
+
+      day.addEventListener('click', () => {
+        App.setDate(d);
+        App.setView('day');
+      });
+
+      grid.appendChild(day);
+    }
+  }
+};
+
+/* =====================================================================
+ *  MONTH VIEW
+ * ===================================================================== */
+const MonthView = {
+  render(date) {
+    const today = new Date();
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+
+    const dowHeader = document.getElementById('month-header');
+    const dowNames = ['一', '二', '三', '四', '五', '六', '日'];
+    dowHeader.innerHTML = dowNames.map(d => `<div class="month-dow">周${d}</div>`).join('');
+
+    const grid = document.getElementById('month-grid');
+    grid.innerHTML = '';
+
+    let cursor = DateUtil.startOfWeek(firstDay);
+
+    for (let i = 0; i < 42; i++) {
+      const cellDate = new Date(cursor);
+      const dateStr = DateUtil.toKey(cellDate);
+      const isOtherMonth = cellDate.getMonth() !== month;
+
+      const cell = document.createElement('div');
+      cell.className = 'month-cell';
+      if (isOtherMonth) cell.classList.add('other-month');
+      if (cellDate.getDay() === 0 || cellDate.getDay() === 6) cell.classList.add('weekend');
+      if (DateUtil.isSameDay(cellDate, today)) cell.classList.add('today');
+
+      const ind = Store.getDayIndicators(dateStr);
+      const previews = Store.getDayPreviews(dateStr, 3);
+      const important = Store.getImportantDaysForDate(dateStr);
+
+      const totalDone = ind.completed + ind.active + ind.cancelled;
+      const pct = totalDone > 0 ? Math.round((ind.completed / totalDone) * 100) : 0;
+
+      const progressHTML = totalDone > 0 ? `
+        <div class="month-progress-row">
+          <div class="month-progress-bar"><span class="month-progress-fill" style="width:${pct}%"></span></div>
+          <span class="month-progress-text">${ind.completed}/${totalDone}</span>
+        </div>
+      ` : '';
+
+      const previewsHTML = previews.length > 0 ? `
+        <ul class="month-previews">
+          ${previews.map(p => `<li>${escapeHTML(p.length > 28 ? p.slice(0, 28) + '…' : p)}</li>`).join('')}
+        </ul>
+      ` : '';
+
+      const importantHTML = important.length
+        ? `<div class="month-important">${ICONS.star}<span>${escapeHTML(important[0].title)}${important.length > 1 ? ` · ${important.length} 项` : ''}</span></div>`
+        : '';
+
+      cell.innerHTML = `
+        <div class="month-day-num">${cellDate.getDate()}</div>
+        ${progressHTML}
+        ${previewsHTML}
+        ${importantHTML}
+      `;
+
+      cell.addEventListener('click', () => {
+        App.setDate(cellDate);
+        App.setView('day');
+      });
+
+      grid.appendChild(cell);
+      cursor = DateUtil.addDays(cursor, 1);
+    }
+  }
+};
+
+/* =====================================================================
+ *  YEAR VIEW
+ * ===================================================================== */
+const YearView = {
+  render(date) {
+    const year = date.getFullYear();
+    const today = new Date();
+    const grid = document.getElementById('year-grid');
+    grid.innerHTML = '';
+
+    for (let m = 0; m < 12; m++) {
+      const monthBox = document.createElement('div');
+      monthBox.className = 'year-month';
+
+      const firstDay = new Date(year, m, 1);
+      const startCursor = DateUtil.startOfWeek(firstDay);
+      const days = [];
+      const dowNames = ['一', '二', '三', '四', '五', '六', '日'];
+
+      for (const d of dowNames) {
+        days.push(`<div class="year-dow-cell">${d}</div>`);
+      }
+
+      for (let i = 0; i < 42; i++) {
+        const cellDate = new Date(startCursor);
+        cellDate.setDate(startCursor.getDate() + i);
+        const dateStr = DateUtil.toKey(cellDate);
+        const isOtherMonth = cellDate.getMonth() !== m;
+        const indicators = Store.getDayIndicators(dateStr);
+        const important = Store.getImportantDaysForDate(dateStr);
+
+        let cls = 'year-day-cell';
+        if (isOtherMonth) cls += ' other-month';
+        if (DateUtil.isSameDay(cellDate, today)) cls += ' today';
+        if (indicators.completed > 0) cls += ' has-completed';
+        else if (indicators.hasContent > 0 || indicators.cancelled > 0) cls += ' has-content';
+        if (important.length) cls += ' has-important';
+
+        days.push(`<div class="${cls}">${cellDate.getDate()}</div>`);
+      }
+
+      monthBox.innerHTML = `
+        <div class="year-month-name">${m + 1} 月</div>
+        <div class="year-month-grid">${days.join('')}</div>
+      `;
+
+      monthBox.addEventListener('click', () => {
+        App.setDate(new Date(year, m, 1));
+        App.setView('month');
+      });
+
+      grid.appendChild(monthBox);
+    }
+  }
+};
+
+/* =====================================================================
+ *  WEATHER TRANSLATIONS  —  map English wttr.in output to Chinese
+ * ===================================================================== */
+const WEATHER_TRANSLATIONS = {
+  // Clear / sunny
+  'clear': '晴', 'sunny': '晴', 'clear and sunny': '晴',
+  // Cloud variants
+  'partly cloudy': '多云', 'partly clouded': '多云',
+  'cloudy': '阴', 'overcast': '阴',
+  'mostly cloudy': '大部多云', 'mostly clear': '晴间多云',
+  // Fog / mist / haze
+  'mist': '薄雾', 'fog': '雾', 'freezing fog': '冻雾',
+  'haze': '霾', 'smoke': '烟',
+  // Drizzle / light rain
+  'patchy light drizzle': '零星小雨', 'light drizzle': '小雨',
+  'freezing drizzle': '冻毛毛雨', 'heavy freezing drizzle': '大冻毛毛雨',
+  'patchy light rain': '零星小雨', 'light rain': '小雨',
+  'moderate rain at times': '时有中雨', 'moderate rain': '中雨',
+  'heavy rain at times': '时有大雨', 'heavy rain': '大雨',
+  'light freezing rain': '小冻雨', 'moderate or heavy freezing rain': '中到大冻雨',
+  'light shower rain': '小阵雨', 'shower or intermittent rain': '阵雨或间歇雨',
+  'heavy shower rain': '大阵雨',
+  // Thunder
+  'thundery outbreaks possible': '可能有雷雨',
+  'patchy light rain with thunder': '零星小雨伴雷',
+  'moderate or heavy rain with thunder': '中到大雨伴雷',
+  'patchy light snow with thunder': '零星小雪伴雷',
+  'moderate or heavy snow with thunder': '中到大雪伴雷',
+  // Snow variants
+  'snow': '雪',
+  'blowing snow': '吹雪', 'blizzard': '暴风雪',
+  'patchy light snow': '零星小雪', 'light snow': '小雪',
+  'patchy moderate snow': '零星中雪', 'moderate snow': '中雪',
+  'patchy heavy snow': '零星大雪', 'heavy snow': '大雪',
+  'ice pellets': '冰粒', 'light snow showers': '小阵雪',
+  'moderate or heavy snow showers': '中到大阵雪',
+  // Sleet
+  'patchy sleet possible': '可能有零星雨夹雪', 'sleet': '雨夹雪',
+  'light sleet': '小雨夹雪', 'moderate or heavy sleet': '中到大雨夹雪',
+  // Other
+  'dust': '浮尘', 'sand': '沙尘', 'windy': '大风',
+  'patchy rain possible': '可能有零星降雨',
+  'patchy snow possible': '可能有零星降雪',
+  'patchy freezing drizzle possible': '可能有零星冻毛毛雨',
+  'patchy freezing rain possible': '可能有零星冻雨',
+  'torrential rain shower': '特大暴雨',
+};
+
+function translateWeather(enDesc) {
+  if (!enDesc) return '';
+  // Already Chinese? pass through (contains CJK characters)
+  if (/[\u4e00-\u9fa5]/.test(enDesc)) return enDesc;
+  const lower = enDesc.toLowerCase().trim();
+  if (WEATHER_TRANSLATIONS[lower]) return WEATHER_TRANSLATIONS[lower];
+  // Try partial matches (in case of variations)
+  for (const [en, zh] of Object.entries(WEATHER_TRANSLATIONS)) {
+    if (lower.includes(en)) return zh;
+  }
+  // Last resort: return original
+  return enDesc;
+}
+
+function hasChinese(text) {
+  return /[\u4e00-\u9fa5]/.test(text || '');
+}
+
+/* =====================================================================
+ *  LUNAR CALENDAR  —  阴历/农历转换（支持 1900-2099）
+ *  Each year's info is encoded in 16 bits:
+ *    - Bits 4-15: 12 month lengths (bit 15 = month 1, bit 4 = month 12); 1=30天, 0=29天
+ *    - Bits 0-3: 闰月月份 (0 = 无闰月)
+ *    - Bit 16: 闰月天数 (1=30天, 0=29天)
+ * ===================================================================== */
+const LUNAR_INFO = [
+  0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2, // 1900-1909
+  0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977, // 1910-1919
+  0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970, // 1920-1929
+  0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950, // 1930-1939
+  0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557, // 1940-1949
+  0x06ca0,0x0b550,0x15355,0x04da0,0x0a5b0,0x14573,0x052b0,0x0a9a8,0x0e950,0x06aa0, // 1950-1959
+  0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0, // 1960-1969
+  0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b6a0,0x195a6, // 1970-1979
+  0x095b0,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,0x0ab60,0x09570, // 1980-1989
+  0x04af5,0x04970,0x064b0,0x074a3,0x0ea50,0x06b58,0x055c0,0x0ab60,0x096d5,0x092e0, // 1990-1999
+  0x0c960,0x0d954,0x0d4a0,0x0da50,0x07552,0x056a0,0x0abb7,0x025d0,0x092d0,0x0cab5, // 2000-2009
+  0x0a950,0x0b4a0,0x0baa4,0x0ad50,0x055d9,0x04ba0,0x0a5b0,0x15176,0x052b0,0x0a930, // 2010-2019
+  0x07954,0x06aa0,0x0ad50,0x05b52,0x04b60,0x0a6e6,0x0a4e0,0x0d260,0x0ea65,0x0d530, // 2020-2029
+  0x05aa0,0x076a3,0x096d0,0x04afb,0x04ad0,0x0a4d0,0x0d0b6,0x0d250,0x0d520,0x0dd45, // 2030-2039
+  0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,0x06d20,0x0ada0, // 2040-2049
+  0x14b63,0x09370,0x049f8,0x04970,0x064b0,0x168a6,0x0ea50,0x06b20,0x1a6c4,0x0aae0, // 2050-2059
+  0x0a2e0,0x0d2e3,0x0c960,0x0d557,0x0d4a0,0x0da50,0x05d55,0x056a0,0x0a6d0,0x055d4, // 2060-2069
+  0x052d0,0x0a9b8,0x0a950,0x0b4a0,0x0b6a6,0x0ad50,0x055a0,0x0aba4,0x0a5b0,0x052b0, // 2070-2079
+  0x0b273,0x06930,0x07337,0x06aa0,0x0ad50,0x14b55,0x04b60,0x0a570,0x054e4,0x0d160, // 2080-2089
+  0x0e968,0x0d520,0x0daa0,0x16aa6,0x056d0,0x04ae0,0x0a9d4,0x0a2d0,0x0d150,0x0f252, // 2090-2099
+];
+
+const LUNAR_MONTH_NAMES = ['正','二','三','四','五','六','七','八','九','十','冬','腊'];
+const LUNAR_DAY_NAMES = [
+  '初一','初二','初三','初四','初五','初六','初七','初八','初九','初十',
+  '十一','十二','十三','十四','十五','十六','十七','十八','十九','二十',
+  '廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'
+];
+
+const LUNAR_HEAVENLY_STEMS = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const LUNAR_EARTHLY_BRANCHES = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const LUNAR_ZODIAC = ['鼠','牛','虎','兔','龙','蛇','马','羊','猴','鸡','狗','猪'];
+
+// 数据编码: 位4-15 存放12个月的大小 (位4=月1, 位15=月12, 1=30天, 0=29天)
+// 位0-3 存放闰月月份 (0=无闰月), 位16 存放闰月天数 (1=30天, 0=29天)
+function lunarYearDays(y) {
+  let sum = 348; // 12 * 29
+  for (let m = 1; m <= 12; m++) {
+    if (LUNAR_INFO[y-1900] & (1 << (m + 3))) sum += 1;  // bit (m+3) for month m
+  }
+  return sum + lunarLeapDays(y);
+}
+
+function lunarLeapMonth(y) {
+  return LUNAR_INFO[y-1900] & 0xf;
+}
+
+function lunarLeapDays(y) {
+  if (lunarLeapMonth(y)) {
+    return (LUNAR_INFO[y-1900] & 0x10000) ? 30 : 29;
+  }
+  return 0;
+}
+
+function lunarMonthDays(y, m) {
+  return (LUNAR_INFO[y-1900] & (1 << (m + 3))) ? 30 : 29;
+}
+
+// 阴历转阳历. 返回 Date 对象或 null (日期无效)
+function lunarToSolar(year, month, day, isLeap) {
+  if (year < 1900 || year > 2099) return null;
+  if (month < 1 || month > 12) return null;
+  if (day < 1 || day > 30) return null;
+  const leap = lunarLeapMonth(year);
+  if (isLeap && leap !== month) return null; // 该年没有这个闰月
+  // Validate day count
+  let mDays;
+  if (isLeap) {
+    mDays = lunarLeapDays(year);
+  } else {
+    mDays = lunarMonthDays(year, month);
+  }
+  if (day > mDays) return null;
+
+  let offset = 0;
+  for (let y = 1900; y < year; y++) offset += lunarYearDays(y);
+
+  for (let m = 1; m < month; m++) {
+    offset += lunarMonthDays(year, m);
+    if (m === leap) offset += lunarLeapDays(year);
+  }
+
+  // (No post-loop leap check: the leap is already inserted in the m===leap branch above)
+
+  // If querying the leap month, we need to add the regular month's days first
+  // because the loop only adds months 1..(month-1).
+  if (isLeap) {
+    offset += lunarMonthDays(year, month);
+  }
+
+  offset += day - 1;
+  // 1900-01-31 = lunar 1900-01-01 (1900年正月初一)
+  // 使用 Date.UTC 避免 1900 之前历史时区差异造成的 1 天偏移
+  const result = new Date(Date.UTC(1900, 0, 31) + offset * 86400000);
+  return result;
+}
+
+// 阳历转阴历. 返回 { year, month, day, isLeap }
+function solarToLunar(date) {
+  const baseDate = new Date(1900, 0, 31);
+  baseDate.setHours(0,0,0,0);
+  const d = new Date(date);
+  d.setHours(0,0,0,0);
+  let offset = Math.round((d - baseDate) / 86400000);
+
+  let year = 1900;
+  let yearDays;
+  while (year < 2100) {
+    yearDays = lunarYearDays(year);
+    if (offset < yearDays) break;
+    offset -= yearDays;
+    year++;
+  }
+  if (year >= 2100) return null;
+
+  const leap = lunarLeapMonth(year);
+  let isLeap = false;
+  let month = 1;
+  for (let m = 1; m <= 12; m++) {
+    let mDays = lunarMonthDays(year, m);
+    if (offset < mDays) { month = m; break; }
+    offset -= mDays;
+    if (m === leap) {
+      mDays = lunarLeapDays(year);
+      if (offset < mDays) { month = m; isLeap = true; break; }
+      offset -= mDays;
+    }
+  }
+  const day = offset + 1;
+  return { year, month, day, isLeap };
+}
+
+// 格式化阴历显示, 如 "八月廿八"
+function formatLunar(month, day, isLeap) {
+  const prefix = isLeap ? '闰' : '';
+  return prefix + LUNAR_MONTH_NAMES[month-1] + '月' + LUNAR_DAY_NAMES[day-1];
+}
+
+// 干支纪年, 如 "丙午年"
+function lunarYearGanZhi(year) {
+  // 1864年是甲子年
+  const offset = (year - 1864) % 60;
+  const stem = LUNAR_HEAVENLY_STEMS[((offset % 10) + 10) % 10];
+  const branch = LUNAR_EARTHLY_BRANCHES[((offset % 12) + 12) % 12];
+  const zodiac = LUNAR_ZODIAC[((offset % 12) + 12) % 12];
+  return stem + branch + ' (' + zodiac + ') 年';
+}
+
+/* =====================================================================
+ *  WEATHER / LOCATION
+ *  Source priority (each tier falls through to the next on failure):
+ *    1) User-set city in settings (manual entry, always wins)
+ *    2) Browser navigator.geolocation (precise, requires permission + HTTPS)
+ *    3) wttr.in IP-geolocation (free, no API key, no permission needed)
+ *    4) Cached previous value
+ *    5) Manual placeholder ('—')
+ * ===================================================================== */
+const Weather = {
+  _cache: null,
+  _ts: 0,
+  _geoCache: null,        // { lat, lng, ts }
+  _geoTs: 0,
+  _cityCache: null,       // resolved city name from lat/lng
+  _cityTs: 0,
+  _ttl: 30 * 60 * 1000,   // 30 min for weather
+  _geoTtl: 60 * 60 * 1000, // 1 hour for geolocation
+  _cityTtl: 24 * 60 * 60 * 1000, // 24h for city name
+
+  // 检查用户是否禁用了天气/位置功能
+  isDisabled() {
+    return !!(Store.getSettings().weatherDisabled);
+  },
+
+  disable() {
+    Store.updateSettings({ weatherDisabled: true });
+    this._cache = null;
+    App.render();
+  },
+
+  enable() {
+    Store.updateSettings({ weatherDisabled: false });
+    this.fetch(true).then(() => App.render());
+  },
+
+  // ---- Geolocation (browser-local, 主要数据源) ----
+  isGeoSupported() {
+    return !!(typeof navigator !== 'undefined' && navigator.geolocation);
+  },
+
+  isSecureContext() {
+    if (typeof window === 'undefined') return false;
+    const isLocal = /^(localhost|127\.0\.0\.1|::1)$/.test(window.location.hostname);
+    return window.isSecureContext || isLocal;
+  },
+
+  // Returns Promise<{ lat, lng, accuracy }>
+  getGeolocation(force = false) {
+    return new Promise((resolve, reject) => {
+      if (!this.isGeoSupported()) return reject(new Error('浏览器不支持定位 API'));
+      if (!this.isSecureContext()) return reject(new Error('需要 HTTPS 或 localhost 才能使用定位'));
+      if (!force && this._geoCache && (Date.now() - this._geoTs) < this._geoTtl) {
+        return resolve(this._geoCache);
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const result = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: pos.coords.accuracy
+          };
+          this._geoCache = result;
+          this._geoTs = Date.now();
+          if (Store.data) {
+            Store.data.settings.geo = result;
+            Store.save();
+          }
+          resolve(result);
+        },
+        (err) => {
+          const reasons = { 1: '用户拒绝定位', 2: '定位不可用', 3: '定位超时' };
+          reject(new Error(reasons[err.code] || err.message));
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: this._geoTtl }
+      );
+    });
+  },
+
+  // 使用 Nominatim (OSM) 反向地理编码，免费无 key，中文结果
+  // 适合中国大陆用户
+  async reverseGeocode(lat, lng) {
+    if (this._cityCache && (Date.now() - this._cityTs) < this._cityTtl) {
+      return this._cityCache;
+    }
+    try {
+      const ctrl = new AbortController();
+      const timeout = setTimeout(() => ctrl.abort(), 5000);
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=zh-CN&zoom=10`;
+      const res = await fetch(url, {
+        signal: ctrl.signal,
+        headers: { 'User-Agent': 'OnePagePlanner/1.0' }
+      });
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error('http ' + res.status);
+      const data = await res.json();
+      const a = data.address || {};
+      // 优先级: city > town > county > state
+      const cityName = a.city || a.town || a.county || a.state || '';
+      const country = a.country_code ? a.country_code.toUpperCase() : '';
+      this._cityCache = cityName;
+      this._cityTs = Date.now();
+      return cityName;
+    } catch (e) {
+      console.warn('Reverse geocode failed:', e.message);
+      return '';
+    }
+  },
+
+  // ---- Main fetch ----
+  async fetch(force = false) {
+    if (this.isDisabled()) {
+      return { location: '', weather: '', disabled: true };
+    }
+    const now = Date.now();
+    if (!force && this._cache && (now - this._ts) < this._ttl) {
+      return this._cache;
+    }
+    const settings = Store.getSettings();
+    const userCity = (settings.city || '').trim();
+    let displayCity = userCity;
+    let source = userCity ? 'user' : 'pending';
+    let weatherDesc = '';
+
+    // 优先尝试用浏览器定位获取精确位置 (本地数据)
+    let geo = null;
+    try {
+      geo = await this.getGeolocation(force);
+      if (!userCity) {
+        // 反向地理编码获取城市名
+        const cityName = await this.reverseGeocode(geo.lat, geo.lng);
+        if (cityName) {
+          displayCity = cityName;
+          source = 'geolocation';
+        }
+      }
+    } catch (geoErr) {
+      console.warn('Geolocation skipped:', geoErr.message);
+    }
+
+    // 尝试用 wttr.in 获取天气 (可选)
+    if (displayCity) {
+      try {
+        const ctrl = new AbortController();
+        const timeout = setTimeout(() => ctrl.abort(), 6000);
+        const url = userCity
+          ? `https://wttr.in/${encodeURIComponent(userCity)}?format=j1&lang=zh`
+          : `https://wttr.in/${geo.lat.toFixed(4)},${geo.lng.toFixed(4)}?format=j1&lang=zh`;
+        const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const data = await res.json();
+          const cc = data?.current_condition?.[0];
+          const rawDesc = cc?.lang_zh?.[0]?.value || cc?.weatherDesc?.[0]?.value || '';
+          weatherDesc = translateWeather(rawDesc);
+          if (weatherDesc === '未知天气') weatherDesc = '';
+        }
+      } catch (e) {
+        // 天气获取失败不影响位置显示
+        console.warn('Weather fetch failed (non-critical):', e.message);
+      }
+    }
+
+    this._cache = {
+      location: displayCity,
+      weather: weatherDesc,
+      city: userCity,
+      source,
+      hasGeo: !!geo
+    };
+    this._ts = now;
+    if (Store.data) {
+      Store.data.settings = {
+        ...Store.data.settings,
+        location: this._cache.location,
+        weather: this._cache.weather,
+        locationSource: source
+      };
+      Store.save();
+    }
+    return this._cache;
+  },
+
+  // Always translate weather on read - even cache may have old English
+  getDisplayWeather() {
+    if (this.isDisabled()) {
+      return { location: '', weather: '', disabled: true };
+    }
+    const cached = this._cache || { weather: '', location: '' };
+    return {
+      ...cached,
+      weather: translateWeather(cached.weather) || '',
+      location: cached.location || ''
+    };
+  },
+
+  async refresh() {
+    const result = await this.fetch(true);
+    App.render();
+    return result;
+  },
+
+  // Force re-acquire geolocation
+  async refreshGeolocation() {
+    await this.getGeolocation(true);
+    this._ts = 0;
+    return await this.refresh();
+  }
+};
+
+
+const App = {
+  currentView: 'day',
+  currentDate: new Date(),
+
+  init() {
+    Store.load();
+    this.bindUI();
+    this.renderImportantSidebar();
+    this.render();
+    // auto-fetch weather/location (non-blocking)
+    Weather.fetch().then(() => {
+      this.render();
+      this.renderImportantSidebar();
+    });
+    // periodic refresh every 30 minutes
+    setInterval(() => Weather.fetch().then(() => {
+      this.render();
+      this.renderImportantSidebar();
+    }), 30 * 60 * 1000);
+  },
+
+  bindUI() {
+    // view tabs
+    document.querySelectorAll('.view-tab').forEach(tab => {
+      tab.addEventListener('click', () => this.setView(tab.dataset.view));
+    });
+
+    // Sidebar add important day button
+    const sidebarAddBtn = document.getElementById('sidebar-add-btn');
+    if (sidebarAddBtn) {
+      sidebarAddBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.openImportantModal();
+      });
+    }
+
+    // Sidebar collapse/expand toggle
+    const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+    const sidebar = document.getElementById('important-sidebar');
+    if (sidebarToggleBtn && sidebar) {
+      sidebarToggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        sidebar.classList.toggle('collapsed');
+        const collapsed = sidebar.classList.contains('collapsed');
+        sidebarToggleBtn.textContent = collapsed ? '›' : '‹';
+        sidebarToggleBtn.title = collapsed ? '展开侧边栏' : '收起侧边栏';
+      });
+    }
+
+    // date nav
+    document.getElementById('today-btn').addEventListener('click', () => {
+      this.currentDate = new Date();
+      this.render();
+    });
+
+    document.getElementById('prev-btn').addEventListener('click', () => {
+      switch (this.currentView) {
+        case 'day':   this.currentDate = DateUtil.addDays(this.currentDate, -1); break;
+        case 'week':  this.currentDate = DateUtil.addDays(this.currentDate, -7); break;
+        case 'month': this.currentDate = DateUtil.addMonths(this.currentDate, -1); break;
+        case 'year':  this.currentDate = DateUtil.addYears(this.currentDate, -1); break;
+      }
+      this.render();
+    });
+
+    document.getElementById('next-btn').addEventListener('click', () => {
+      switch (this.currentView) {
+        case 'day':   this.currentDate = DateUtil.addDays(this.currentDate, 1); break;
+        case 'week':  this.currentDate = DateUtil.addDays(this.currentDate, 7); break;
+        case 'month': this.currentDate = DateUtil.addMonths(this.currentDate, 1); break;
+        case 'year':  this.currentDate = DateUtil.addYears(this.currentDate, 1); break;
+      }
+      this.render();
+    });
+
+    document.getElementById('date-display').addEventListener('click', () => {
+      let picker = document.getElementById('hidden-date-picker');
+      if (!picker) {
+        picker = document.createElement('input');
+        picker.type = 'date';
+        picker.id = 'hidden-date-picker';
+        picker.className = 'visually-hidden';
+        document.body.appendChild(picker);
+        picker.addEventListener('change', (e) => {
+          if (e.target.value) {
+            const [y, m, d] = e.target.value.split('-').map(Number);
+            this.currentDate = new Date(y, m - 1, d);
+            this.render();
+          }
+        });
+      }
+      picker.value = DateUtil.formatDateShort(this.currentDate);
+      if (picker.showPicker) picker.showPicker();
+      else picker.click();
+    });
+
+    // important modal
+    document.getElementById('modal-close').addEventListener('click', () => this.closeImportantModal());
+    document.getElementById('modal-done').addEventListener('click', () => this.closeImportantModal());
+    document.getElementById('important-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'important-modal') this.closeImportantModal();
+    });
+    // Type tab switcher (solar/lunar)
+    document.querySelectorAll('.type-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t === tab));
+        const type = tab.dataset.type;
+        document.getElementById('add-fields-solar').classList.toggle('hidden', type !== 'solar');
+        document.getElementById('add-fields-lunar').classList.toggle('hidden', type !== 'lunar');
+      });
+    });
+
+    // Populate lunar day dropdown
+    const lunarDaySelect = document.getElementById('new-lunar-day');
+    const lunarMonthSelect = document.getElementById('new-lunar-month');
+    const lunarLeapCheck = document.getElementById('new-lunar-leap');
+    const lunarDayNames = ['初一','初二','初三','初四','初五','初六','初七','初八','初九','初十',
+      '十一','十二','十三','十四','十五','十六','十七','十八','十九','二十',
+      '廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'];
+    for (let i = 1; i <= 30; i++) {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = lunarDayNames[i-1];
+      lunarDaySelect.appendChild(opt);
+    }
+
+    // Toggle year input visibility based on recurring checkbox
+    const lunarRecurringCheck = document.getElementById('new-lunar-recurring');
+    const lunarYearRow = document.getElementById('lunar-year-row');
+    if (lunarRecurringCheck && lunarYearRow) {
+      lunarRecurringCheck.addEventListener('change', () => {
+        lunarYearRow.classList.toggle('hidden', lunarRecurringCheck.checked);
+      });
+    }
+
+    // Live update of solar hint
+    document.getElementById('new-day-date').addEventListener('change', (e) => {
+      const d = e.target.value;
+      const hint = document.getElementById('solar-hint');
+      if (d && hint) {
+        const parts = d.split('-');
+        if (parts.length === 3) {
+          hint.innerHTML = `<span class="hint-icon">📅</span><span>每年 ${parseInt(parts[1])}月${parseInt(parts[2])}日 都会显示</span>`;
+        }
+      }
+    });
+
+    document.getElementById('add-day-btn').addEventListener('click', () => {
+      const title = document.getElementById('new-day-title').value.trim();
+      if (!title) return;
+      const activeTab = document.querySelector('.type-tab.active');
+      const type = activeTab ? activeTab.dataset.type : 'solar';
+
+      if (type === 'lunar') {
+        const month = parseInt(document.getElementById('new-lunar-month').value);
+        const day = parseInt(document.getElementById('new-lunar-day').value);
+        const isLeap = document.getElementById('new-lunar-leap').checked;
+        const recurring = document.getElementById('new-lunar-recurring').checked;
+
+        if (recurring) {
+          // 阴历每年重复: 只需月+日，每年自动找对应阳历
+          Store.addImportantDay({ type: 'lunar', month, day, isLeap, recurring: true, title });
+        } else {
+          // 阴历一次性: 需要指定年份，转为该年的阳历存储
+          const yearInput = document.getElementById('new-lunar-year').value;
+          const year = yearInput ? parseInt(yearInput) : new Date().getFullYear();
+          const solarDate = lunarToSolar(year, month, day, isLeap);
+          if (!solarDate) {
+            alert('该阴历日期在 ' + year + ' 年不存在（可能不是闰月）');
+            return;
+          }
+          const dateStr = DateUtil.toKey(solarDate);
+          Store.addImportantDay({ type: 'solar', date: dateStr, recurring: false, title });
+        }
+      } else {
+        // Solar
+        const date = document.getElementById('new-day-date').value;
+        if (!date) return;
+        const recurring = document.getElementById('new-solar-recurring').checked;
+        if (recurring) {
+          const parts = date.split('-');
+          Store.addImportantDay({
+            type: 'solar',
+            month: parseInt(parts[1]),
+            day: parseInt(parts[2]),
+            recurring: true,
+            title
+          });
+        } else {
+          Store.addImportantDay({ type: 'solar', date, recurring: false, title });
+        }
+      }
+      document.getElementById('new-day-title').value = '';
+      this.renderImportantList();
+      this.renderImportantSidebar();
+      if (this.currentView === 'day') DayView.render(this.currentDate);
+    });
+    document.getElementById('new-day-title').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('add-day-btn').click();
+    });
+
+    // keyboard nav
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+      if (!document.getElementById('important-modal').classList.contains('hidden')) return;
+      if (e.key === 'ArrowLeft')  document.getElementById('prev-btn').click();
+      if (e.key === 'ArrowRight') document.getElementById('next-btn').click();
+      if (e.key === 't' || e.key === 'T') document.getElementById('today-btn').click();
+      if (e.key === '1') this.setView('day');
+      if (e.key === '2') this.setView('week');
+      if (e.key === '3') this.setView('month');
+      if (e.key === '4') this.setView('year');
+    });
+  },
+
+  setView(view) {
+    this.currentView = view;
+    document.querySelectorAll('.view-tab').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.view === view);
+    });
+    document.querySelectorAll('.view').forEach(v => {
+      v.classList.toggle('active', v.id === `${view}-view`);
+    });
+    this.render();
+  },
+
+  setDate(d) {
+    this.currentDate = d;
+    this.render();
+  },
+
+  // Render the sidebar list of important days
+  renderImportantSidebar() {
+    const list = document.getElementById('sidebar-list');
+    if (!list) return;
+    const days = Store.getImportantDays().slice();
+    if (days.length === 0) {
+      list.innerHTML = '<div class="sidebar-empty">暂无重要日子<br>点击 + 添加</div>';
+      return;
+    }
+    days.sort((a, b) => {
+      if (a.type === 'lunar' && b.type === 'lunar') return (a.month - b.month) || (a.day - b.day);
+      if (a.type === 'lunar') return 1;
+      if (b.type === 'lunar') return -1;
+      // solar: recurring uses month+day; one-time uses date
+      const aKey = a.recurring ? a.month * 100 + a.day : (a.date || '');
+      const bKey = b.recurring ? b.month * 100 + b.day : (b.date || '');
+      return aKey < bKey ? -1 : aKey > bKey ? 1 : 0;
+    });
+    list.innerHTML = days.map(d => {
+      let dateLabel;
+      if (d.type === 'lunar') {
+        dateLabel = '🌙 ' + LUNAR_MONTH_NAMES[d.month-1] + '月' + LUNAR_DAY_NAMES[d.day-1] + ' · 每年';
+      } else if (d.recurring) {
+        dateLabel = '📅 ' + d.month + '月' + d.day + '日 · 每年';
+      } else {
+        dateLabel = '📅 ' + (d.date || '') + ' · 一次性';
+      }
+      return `
+        <div class="sidebar-item" data-id="${d.id}">
+          <div class="sidebar-item-info">
+            <div class="sidebar-item-title">${escapeHTML(d.title)}</div>
+            <div class="sidebar-item-date">${escapeHTML(dateLabel)}</div>
+          </div>
+          <button class="sidebar-item-delete" data-id="${d.id}" title="删除">${ICONS.trash}</button>
+        </div>`;
+    }).join('');
+    list.querySelectorAll('.sidebar-item-delete').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm('确定删除"' + btn.closest('.sidebar-item').querySelector('.sidebar-item-title').textContent + '"吗？')) {
+          Store.removeImportantDay(btn.dataset.id);
+          this.renderImportantSidebar();
+          if (this.currentView === 'day') DayView.render(this.currentDate);
+        }
+      });
+    });
+  },
+
+  render() {
+    const dd = document.getElementById('date-display');
+    switch (this.currentView) {
+      case 'day':   dd.textContent = DateUtil.formatDateLong(this.currentDate); break;
+      case 'week': {
+        const start = DateUtil.startOfWeek(this.currentDate);
+        const end = DateUtil.addDays(start, 6);
+        dd.textContent = `${DateUtil.formatDateShort(start)} → ${DateUtil.formatDateShort(end)}`;
+        break;
+      }
+      case 'month': dd.textContent = DateUtil.formatMonthYear(this.currentDate); break;
+      case 'year':  dd.textContent = DateUtil.formatYear(this.currentDate); break;
+    }
+
+    switch (this.currentView) {
+      case 'day':   DayView.render(this.currentDate); break;
+      case 'week':  WeekView.render(this.currentDate); break;
+      case 'month': MonthView.render(this.currentDate); break;
+      case 'year':  YearView.render(this.currentDate); break;
+    }
+  },
+
+  openImportantModal() {
+    document.getElementById('important-modal').classList.remove('hidden');
+    // Reset to solar tab
+    document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === 'solar'));
+    document.getElementById('add-fields-solar').classList.remove('hidden');
+    document.getElementById('add-fields-lunar').classList.add('hidden');
+    // Pre-fill the date input with the currently displayed date
+    const dateInput = document.getElementById('new-day-date');
+    if (dateInput && !dateInput.value) {
+      dateInput.value = DateUtil.formatDateShort(this.currentDate);
+    }
+    this.renderImportantList();
+    this.renderImportantSidebar();
+  },
+
+  closeImportantModal() {
+    document.getElementById('important-modal').classList.add('hidden');
+    if (this.currentView === 'day') DayView.render(this.currentDate);
+  },
+
+  renderImportantList() {
+    const list = document.getElementById('important-list');
+    const days = Store.getImportantDays().slice();
+    if (days.length === 0) {
+      list.innerHTML = '<div style="color:var(--text-muted);font-style:italic;font-size:13px;text-align:center;padding:30px 0;">还没有重要日子<br>在下方添加你的第一个吧</div>';
+      return;
+    }
+    days.sort((a, b) => {
+      if (a.type === 'lunar' && b.type === 'lunar') {
+        return (a.month - b.month) || (a.day - b.day);
+      }
+      if (a.type === 'lunar') return 1;
+      if (b.type === 'lunar') return -1;
+      return (a.date || '').localeCompare(b.date || '');
+    });
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = `
+      <div class="important-list-header">
+        <h4>已添加的重要日子</h4>
+        <span class="count">${days.length} 项</span>
+      </div>
+      <div class="important-day-items">
+        ${days.map(d => {
+          let dateLabel;
+          if (d.type === 'lunar') {
+            const prefix = d.isLeap ? '🌙 闰' : '🌙 ';
+            dateLabel = prefix + LUNAR_MONTH_NAMES[d.month-1] + '月' + LUNAR_DAY_NAMES[d.day-1] + ' · 每年';
+          } else if (d.recurring) {
+            dateLabel = '📅 ' + d.month + '月' + d.day + '日 · 每年';
+          } else {
+            dateLabel = '📅 ' + (d.date || '') + ' · 一次性';
+          }
+          return `
+            <div class="important-day-item ${d.type === 'lunar' ? 'is-lunar' : ''}">
+              <span class="star">${ICONS.star}</span>
+              <div class="important-day-text">
+                <div class="important-day-title">${escapeHTML(d.title)}</div>
+                <div class="important-day-date">${escapeHTML(dateLabel)}</div>
+              </div>
+              <button class="important-day-remove" data-id="${d.id}" title="删除">${ICONS.trash}</button>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    list.innerHTML = '';
+    list.appendChild(wrapper);
+
+    list.querySelectorAll('.important-day-remove').forEach(btn => {
+      btn.addEventListener('click', () => {
+        Store.removeImportantDay(btn.dataset.id);
+        this.renderImportantList();
+      });
+    });
+  },
+};
+
+// Boot
+window.addEventListener('DOMContentLoaded', () => App.init());
+</script>
+</body>
+</html>
