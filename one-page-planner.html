@@ -1145,11 +1145,14 @@
     line-height: 1;
   }
 
+  /* 任务四: 月视图进度条在 top row 里, 更紧凑 */
   .month-progress-row {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 5px;
+    gap: 5px;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 60%;
   }
 
   .month-progress-bar {
@@ -1216,21 +1219,53 @@
     background: var(--border-strong);
   }
 
-  .month-important {
+  /* 任务四: 重要日子专用区域 (顶部, 与事项预览视觉分隔) */
+  .month-cell-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+  }
+  .month-important-tags {
     font-size: 10px;
     color: var(--gold-dark, #B8932E);
-    margin-top: auto;
     font-family: var(--font-sans);
     letter-spacing: 0.5px;
     display: flex;
     align-items: center;
-    gap: 3px;
-    padding-top: 4px;
-    border-top: 1px dashed var(--border-soft);
+    gap: 4px;
+    padding: 2px 5px 2px 4px;
+    background: var(--gold-soft);
+    border-radius: 3px;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+    min-height: 0;
+    overflow: hidden;
+    line-height: 1.3;
   }
-
-  .month-important svg { width: 10px; height: 10px; flex-shrink: 0; }
-  .month-important span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .month-important-tags .dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    flex-shrink: 0;
+  }
+  .month-important-tags .label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .month-important-tags .more {
+    color: var(--text-muted);
+    font-size: 9px;
+    flex-shrink: 0;
+    margin-left: 2px;
+  }
 
   .month-cell.other-month .month-previews,
   .month-cell.other-month .month-progress-row { opacity: 0.55; }
@@ -2532,28 +2567,37 @@ const MonthView = {
       const totalDone = ind.completed + ind.active + ind.cancelled;
       const pct = totalDone > 0 ? Math.round((ind.completed / totalDone) * 100) : 0;
 
+      // 任务四: 顶部行 = 日期号 + 进度条 (合并到一行, 节省垂直空间)
       const progressHTML = totalDone > 0 ? `
-        <div class="month-progress-row">
-          <div class="month-progress-bar"><span class="month-progress-fill" style="width:${pct}%"></span></div>
+        <span class="month-progress-row">
+          <span class="month-progress-bar"><span class="month-progress-fill" style="width:${pct}%"></span></span>
           <span class="month-progress-text">${ind.completed}/${totalDone}</span>
-        </div>
+        </span>
       ` : '';
 
+      // 任务四: 重要日子专用区域 (顶部, 彩色圆点 + 标题缩写, +N if more)
+      const importantHTML = important.length
+        ? `<div class="month-important-tags" title="${important.map(d => escapeHTML(d.title)).join(', ')}">
+             <span class="dot"></span>
+             <span class="label">${escapeHTML(important[0].title)}</span>
+             ${important.length > 1 ? `<span class="more">+${important.length - 1}</span>` : ''}
+           </div>`
+        : '';
+
+      // 事项预览: 占用剩余垂直空间 (flex: 1)
       const previewsHTML = previews.length > 0 ? `
         <ul class="month-previews">
           ${previews.map(p => `<li>${escapeHTML(p.length > 28 ? p.slice(0, 28) + '…' : p)}</li>`).join('')}
         </ul>
       ` : '';
 
-      const importantHTML = important.length
-        ? `<div class="month-important">${ICONS.star}<span>${escapeHTML(important[0].title)}${important.length > 1 ? ` · ${important.length} 项` : ''}</span></div>`
-        : '';
-
       cell.innerHTML = `
-        <div class="month-day-num">${cellDate.getDate()}</div>
-        ${progressHTML}
-        ${previewsHTML}
+        <div class="month-cell-top">
+          <span class="month-day-num">${cellDate.getDate()}</span>
+          ${progressHTML}
+        </div>
         ${importantHTML}
+        ${previewsHTML}
       `;
 
       cell.addEventListener('click', () => {
@@ -2846,103 +2890,6 @@ function lunarYearGanZhi(year) {
   return stem + branch + ' (' + zodiac + ') 年';
 }
 
-
-/* =====================================================================
- *  LUNAR SELF-TESTS  —  启动时跑一次，校验 LUNAR_INFO 是否被误改
- *  失败会在 console 打印 [lunar] assertion failed: ...
- * ===================================================================== */
-(function selfTestLunar(){
-  function _date(y,m,d){return {y,m,d};}
-  function _cmp(label, got, exp){
-    const ok = got && got.getUTCFullYear()===exp.y && got.getUTCMonth()+1===exp.m && got.getUTCDate()===exp.d;
-    console.assert(ok, '[lunar] '+label+' got='+got+' want='+exp.y+'-'+exp.m+'-'+exp.d);
-    return ok;
-  }
-  const checks = [
-    ['2026 农历八月廿8 → 2026-10-08', lunarToSolar(2026,8,28,false), _date(2026,10,8)],
-    ['2025 五月初五 (端午) → 2025-05-31', lunarToSolar(2025,5,5,false), _date(2025,5,31)],
-    ['2025 八月十五 (中秋) → 2025-10-06', lunarToSolar(2025,8,15,false), _date(2025,10,6)],
-    ['2025 春节 → 2025-01-29', lunarToSolar(2025,1,1,false), _date(2025,1,29)],
-    ['2026 春节 → 2026-02-17', lunarToSolar(2026,1,1,false), _date(2026,2,17)],
-    ['2025 闰六月十五 → 2025-08-08', lunarToSolar(2025,6,15,true), _date(2025,8,8)],
-    ['2024 龙抬头 二月初二 → 2024-03-11', lunarToSolar(2024,2,2,false), _date(2024,3,11)],
-    ['2026 中秋 八月十五 → 2026-09-25', lunarToSolar(2026,8,15,false), _date(2026,9,25)],
-    ['1900 春节 (基线) → 1900-01-31', lunarToSolar(1900,1,1,false), _date(1900,1,31)],
-  ];
-  let pass = 0;
-  for(const [l,got,exp] of checks){ if(_cmp(l,got,exp)) pass++; }
-  // 反向互逆: lunar → solar → lunar 应回到原值
-  const s = lunarToSolar(2026,8,28,false);
-  const back = solarToLunar(s);
-  const invOk = back && back.year===2026 && back.month===8 && back.day===28 && !back.isLeap;
-  console.assert(invOk, '[lunar] solarToLunar 反推不匹配: '+JSON.stringify(back));
-  if(invOk) pass++;
-  console.log('[lunar] self-tests: '+pass+'/'+(checks.length+1)+' 通过');
-})();
-
-/* =====================================================================
- *  TASK 3 SELF-TESTS  —  任务三 4×4 重要性分区
- * ===================================================================== */
-(function selfTestTask3(){
-  let pass = 0, total = 0;
-  function t(label, cond){ total++; if(cond){pass++; console.log('✓ [task3] '+label);} else console.log('✗ [task3] '+label); }
-
-  // 验证 COLUMN_OF / COLUMN_TYPE_OF / ROW_OF
-  t('COLUMN_OF(0)=0 (info)', COLUMN_OF(0) === 0);
-  t('COLUMN_OF(1)=1 (work)', COLUMN_OF(1) === 1);
-  t('COLUMN_OF(15)=3 (personal)', COLUMN_OF(15) === 3);
-  t('COLUMN_TYPE_OF(0)=info', COLUMN_TYPE_OF(0) === 'info');
-  t('COLUMN_TYPE_OF(1)=work', COLUMN_TYPE_OF(1) === 'work');
-  t('COLUMN_TYPE_OF(4)=work (col 0 扩展)', COLUMN_TYPE_OF(4) === 'work');
-  t('COLUMN_TYPE_OF(2)=flex', COLUMN_TYPE_OF(2) === 'flex');
-  t('COLUMN_TYPE_OF(3)=personal', COLUMN_TYPE_OF(3) === 'personal');
-  t('ROW_OF(0)=0', ROW_OF(0) === 0);
-  t('ROW_OF(15)=3', ROW_OF(15) === 3);
-
-  // 验证 itemImportance 排序
-  // work col 1 row 0 (idx 1) 应 > flex col 2 row 0 (idx 2) > personal col 3 row 0 (idx 3)
-  t('work(idx 1) > flex(idx 2)', itemImportance(1) > itemImportance(2));
-  t('flex(idx 2) > personal(idx 3)', itemImportance(2) > itemImportance(3));
-  // 同列 work (col 1): row 0 > row 1 > row 2 > row 3
-  t('同列 work: row0(idx 1) > row1(idx 5)', itemImportance(1) > itemImportance(5));
-  t('同列 work: row1(idx 5) > row2(idx 9)', itemImportance(5) > itemImportance(9));
-  t('同列 work: row2(idx 9) > row3(idx 13)', itemImportance(9) > itemImportance(13));
-
-  // 验证 getDayItemsSorted
-  // 构造测试数据: 一个日期, 所有 15 个格子都有内容
-  const testDate = '2099-12-31';
-  Store.data = { cells: {}, importantDays: [], settings: { city:'', weather:'', location:'', locationSource:'manual', geo:null, weatherDisabled:false } };
-  Store.data.cells[testDate] = { pages: [{}] };
-  for(let i=1; i<=15; i++){
-    Store.data.cells[testDate].pages[0][i] = { content: 'cell-'+i, status: 'active' };
-  }
-  const sorted = Store.getDayItemsSorted(testDate);
-  t('getDayItemsSorted 返回 15 项', sorted.length === 15);
-  t('最优先是 work row 0 (idx 1)', sorted[0].index === 1);
-  // top 4 应是: work col 0/1 row 0 (idx 1, 4)
-  t('top 2 含 idx 4 (work col 0 row 1)', sorted.slice(0, 4).some(x => x.index === 4));
-  // 末位应是 personal row 3 (idx 15)
-  t('末位是 idx 15 (personal row 3)', sorted[sorted.length-1].index === 15);
-
-  // 跨页
-  Store.data.cells[testDate].pages[1] = {};
-  Store.data.cells[testDate].pages[1][1] = { content: 'page2-cell1', status: 'active' };
-  const sorted2 = Store.getDayItemsSorted(testDate);
-  t('跨页: getDayItemsSorted 返回 16 项', sorted2.length === 16);
-  t('跨页: 最高仍是 idx 1', sorted2[0].index === 1);
-  t('跨页: 含 page2-cell1 (idx 1, pageIdx 1)', sorted2.some(x => x.pageIdx === 1 && x.index === 1));
-
-  // getDayPreviews 基于排序
-  Store.data.cells[testDate] = { pages: [{}] };
-  for(let i=1; i<=15; i++){
-    Store.data.cells[testDate].pages[0][i] = { content: 'cell-'+i, status: 'active' };
-  }
-  const previews = Store.getDayPreviews(testDate, 3);
-  t('getDayPreviews 返回 3 条', previews.length === 3);
-  t('getDayPreviews 第一条 = work row 0', previews[0] === 'cell-1');
-
-  console.log('[task3] self-tests: '+pass+'/'+total+' 通过');
-})();
 
 /* =====================================================================
  *  WEATHER / LOCATION
@@ -3505,7 +3452,9 @@ const App = {
           if (d.type === 'lunar') {
             const prefix = d.isLeap ? '🌙 闰' : '🌙 ';
             dateLabel = prefix + LUNAR_MONTH_NAMES[d.month-1] + '月' + LUNAR_DAY_NAMES[d.day-1] + ' · 每年';
-          } else if (d.recurring) {
+   
+
+       } else if (d.recurring) {
             dateLabel = '📅 ' + d.month + '月' + d.day + '日 · 每年';
           } else {
             dateLabel = '📅 ' + (d.date || '') + ' · 一次性';
@@ -3534,6 +3483,173 @@ const App = {
     });
   },
 };
+
+
+/* =====================================================================
+ *  LUNAR SELF-TESTS  —  启动时跑一次，校验 LUNAR_INFO 是否被误改
+ *  失败会在 console 打印 [lunar] assertion failed: ...
+ * ===================================================================== */
+(function selfTestLunar(){
+  function _date(y,m,d){return {y,m,d};}
+  function _cmp(label, got, exp){
+    const ok = got && got.getUTCFullYear()===exp.y && got.getUTCMonth()+1===exp.m && got.getUTCDate()===exp.d;
+    console.assert(ok, '[lunar] '+label+' got='+got+' want='+exp.y+'-'+exp.m+'-'+exp.d);
+    return ok;
+  }
+  const checks = [
+    ['2026 农历八月廿8 → 2026-10-08', lunarToSolar(2026,8,28,false), _date(2026,10,8)],
+    ['2025 五月初五 (端午) → 2025-05-31', lunarToSolar(2025,5,5,false), _date(2025,5,31)],
+    ['2025 八月十五 (中秋) → 2025-10-06', lunarToSolar(2025,8,15,false), _date(2025,10,6)],
+    ['2025 春节 → 2025-01-29', lunarToSolar(2025,1,1,false), _date(2025,1,29)],
+    ['2026 春节 → 2026-02-17', lunarToSolar(2026,1,1,false), _date(2026,2,17)],
+    ['2025 闰六月十五 → 2025-08-08', lunarToSolar(2025,6,15,true), _date(2025,8,8)],
+    ['2024 龙抬头 二月初二 → 2024-03-11', lunarToSolar(2024,2,2,false), _date(2024,3,11)],
+    ['2026 中秋 八月十五 → 2026-09-25', lunarToSolar(2026,8,15,false), _date(2026,9,25)],
+    ['1900 春节 (基线) → 1900-01-31', lunarToSolar(1900,1,1,false), _date(1900,1,31)],
+  ];
+  let pass = 0;
+  for(const [l,got,exp] of checks){ if(_cmp(l,got,exp)) pass++; }
+  // 反向互逆: lunar → solar → lunar 应回到原值
+  const s = lunarToSolar(2026,8,28,false);
+  const back = solarToLunar(s);
+  const invOk = back && back.year===2026 && back.month===8 && back.day===28 && !back.isLeap;
+  console.assert(invOk, '[lunar] solarToLunar 反推不匹配: '+JSON.stringify(back));
+  if(invOk) pass++;
+  console.log('[lunar] self-tests: '+pass+'/'+(checks.length+1)+' 通过');
+})();
+
+/* =====================================================================
+ *  TASK 3 SELF-TESTS  —  任务三 4×4 重要性分区
+ * ===================================================================== */
+(function selfTestTask3(){
+  let pass = 0, total = 0;
+  function t(label, cond){ total++; if(cond){pass++; console.log('✓ [task3] '+label);} else console.log('✗ [task3] '+label); }
+
+  // 验证 COLUMN_OF / COLUMN_TYPE_OF / ROW_OF
+  t('COLUMN_OF(0)=0 (info)', COLUMN_OF(0) === 0);
+  t('COLUMN_OF(1)=1 (work)', COLUMN_OF(1) === 1);
+  t('COLUMN_OF(15)=3 (personal)', COLUMN_OF(15) === 3);
+  t('COLUMN_TYPE_OF(0)=info', COLUMN_TYPE_OF(0) === 'info');
+  t('COLUMN_TYPE_OF(1)=work', COLUMN_TYPE_OF(1) === 'work');
+  t('COLUMN_TYPE_OF(4)=work (col 0 扩展)', COLUMN_TYPE_OF(4) === 'work');
+  t('COLUMN_TYPE_OF(2)=flex', COLUMN_TYPE_OF(2) === 'flex');
+  t('COLUMN_TYPE_OF(3)=personal', COLUMN_TYPE_OF(3) === 'personal');
+  t('ROW_OF(0)=0', ROW_OF(0) === 0);
+  t('ROW_OF(15)=3', ROW_OF(15) === 3);
+
+  // 验证 itemImportance 排序
+  // work col 1 row 0 (idx 1) 应 > flex col 2 row 0 (idx 2) > personal col 3 row 0 (idx 3)
+  t('work(idx 1) > flex(idx 2)', itemImportance(1) > itemImportance(2));
+  t('flex(idx 2) > personal(idx 3)', itemImportance(2) > itemImportance(3));
+  // 同列 work (col 1): row 0 > row 1 > row 2 > row 3
+  t('同列 work: row0(idx 1) > row1(idx 5)', itemImportance(1) > itemImportance(5));
+  t('同列 work: row1(idx 5) > row2(idx 9)', itemImportance(5) > itemImportance(9));
+  t('同列 work: row2(idx 9) > row3(idx 13)', itemImportance(9) > itemImportance(13));
+
+  // 验证 getDayItemsSorted
+  // 构造测试数据: 一个日期, 所有 15 个格子都有内容
+  const testDate = '2099-12-31';
+  Store.data = { cells: {}, importantDays: [], settings: { city:'', weather:'', location:'', locationSource:'manual', geo:null, weatherDisabled:false } };
+  Store.data.cells[testDate] = { pages: [{}] };
+  for(let i=1; i<=15; i++){
+    Store.data.cells[testDate].pages[0][i] = { content: 'cell-'+i, status: 'active' };
+  }
+  const sorted = Store.getDayItemsSorted(testDate);
+  t('getDayItemsSorted 返回 15 项', sorted.length === 15);
+  t('最优先是 work row 0 (idx 1)', sorted[0].index === 1);
+  // top 4 应是: work col 0/1 row 0 (idx 1, 4)
+  t('top 2 含 idx 4 (work col 0 row 1)', sorted.slice(0, 4).some(x => x.index === 4));
+  // 末位应是 personal row 3 (idx 15)
+  t('末位是 idx 15 (personal row 3)', sorted[sorted.length-1].index === 15);
+
+  // 跨页
+  Store.data.cells[testDate].pages[1] = {};
+  Store.data.cells[testDate].pages[1][1] = { content: 'page2-cell1', status: 'active' };
+  const sorted2 = Store.getDayItemsSorted(testDate);
+  t('跨页: getDayItemsSorted 返回 16 项', sorted2.length === 16);
+  t('跨页: 最高仍是 idx 1', sorted2[0].index === 1);
+  t('跨页: 含 page2-cell1 (idx 1, pageIdx 1)', sorted2.some(x => x.pageIdx === 1 && x.index === 1));
+
+  // getDayPreviews 基于排序
+  Store.data.cells[testDate] = { pages: [{}] };
+  for(let i=1; i<=15; i++){
+    Store.data.cells[testDate].pages[0][i] = { content: 'cell-'+i, status: 'active' };
+  }
+  const previews = Store.getDayPreviews(testDate, 3);
+  t('getDayPreviews 返回 3 条', previews.length === 3);
+  t('getDayPreviews 第一条 = work row 0', previews[0] === 'cell-1');
+
+  console.log('[task3] self-tests: '+pass+'/'+total+' 通过');
+})();
+
+/* =====================================================================
+ *  TASK 4 SELF-TESTS  —  月视图布局分离 (重要日子 vs 事项预览)
+ *  DOM 检查, 在浏览器中执行
+ * ===================================================================== */
+(function selfTestTask4(){
+  let pass = 0, total = 0;
+  function t(label, cond){ total++; if(cond){pass++; console.log('✓ [task4] '+label);} else console.log('✗ [task4] '+label); }
+
+  // 准备测试数据: 2026-08-27 有 previews + 重要日子
+  const _testDate = '2026-08-27';
+  Store.data = Store.data || { cells: {}, importantDays: [], settings: { city:'', weather:'', location:'', locationSource:'manual', geo:null, weatherDisabled:false } };
+  Store.data.cells[_testDate] = { pages: [{}] };
+  for(let i=1; i<=15; i++){
+    Store.data.cells[_testDate].pages[0][i] = { content: 'cell-'+i, status: i <= 8 ? 'active' : 'completed' };
+  }
+  Store.data.importantDays = [
+    { id: '1', type:'solar', month: 8, day: 27, recurring:true, title:'测试生日' },
+    { id: '2', type:'solar', month: 8, day: 27, recurring:true, title:'项目里程碑' },
+  ];
+  App.currentDate = new Date(_testDate);
+  App.setView('month');
+
+  const cells = document.querySelectorAll('#month-grid .month-cell:not(.other-month)');
+  const aug27 = Array.from(cells).find(c => c.querySelector('.month-day-num')?.textContent === '27');
+
+  t('找到 27 号 cell', !!aug27);
+  if(aug27){
+    const top = aug27.querySelector('.month-cell-top');
+    const tags = aug27.querySelector('.month-important-tags');
+    const previews = aug27.querySelector('.month-previews');
+    const oldImportant = aug27.querySelector('.month-important');
+
+    t('有 .month-cell-top 顶部行', !!top);
+    t('顶部行含 .month-day-num', !!top?.querySelector('.month-day-num'));
+    t('顶部行含 .month-progress-row', !!top?.querySelector('.month-progress-row'));
+    t('有 .month-important-tags 区域', !!tags);
+    t('有 .month-previews 事项预览', !!previews);
+    t('旧的 .month-important 已移除', !oldImportant);
+
+    if(tags){
+      const tagsIdx = Array.from(aug27.children).indexOf(tags);
+      const prevIdx = previews ? Array.from(aug27.children).indexOf(previews) : -1;
+      t('重要日子在 previews 之前 (顶部)', tagsIdx < prevIdx);
+      t('重要日子含金色圆点', !!tags.querySelector('.dot'));
+      t('重要日子含 label', !!tags.querySelector('.label'));
+      t('重要日子有 +N 多余项标识 (2 项 → +1)', !!tags.querySelector('.more'));
+    }
+
+    if(previews){
+      t('previews 项数 = 3 (默认 max)', aug27.querySelectorAll('.month-previews li').length === 3);
+    }
+  }
+
+  // 场景: 只有 important, 无 previews
+  const _emptyDate = '2026-08-28';
+  Store.data.cells[_emptyDate] = { pages: [{}] };
+  Store.data.importantDays = [{ id: '3', type:'solar', month: 8, day: 28, recurring:true, title:'仅重要日子' }];
+  App.render();
+  const aug28 = Array.from(document.querySelectorAll('#month-grid .month-cell:not(.other-month)'))
+                    .find(c => c.querySelector('.month-day-num')?.textContent === '28');
+  const aug28Tags = aug28?.querySelector('.month-important-tags');
+  const aug28Previews = aug28?.querySelector('.month-previews');
+  t('28号(无 previews)仍有 important-tags 显示', !!aug28Tags);
+  t('28号无 previews 时不渲染空 ul', !aug28Previews);
+  t('28号 important 文本正确', aug28Tags?.textContent.includes('仅重要日子'));
+
+  console.log('[task4] self-tests: '+pass+'/'+total+' 通过');
+})();
 
 // Boot
 window.addEventListener('DOMContentLoaded', () => App.init());
