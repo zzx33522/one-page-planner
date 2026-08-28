@@ -2697,6 +2697,15 @@ const DayView = {
 
     textarea.addEventListener('blur', save);
     if (noteInput) noteInput.addEventListener('blur', save);
+    if (noteInput) {
+      noteInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) {
+          e.preventDefault();
+          save();
+        }
+        e.stopPropagation();
+      });
+    }
     textarea.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         e.preventDefault();
