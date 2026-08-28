@@ -2584,13 +2584,11 @@ const DayView = {
     cell.appendChild(content);
 
     // 任务五: 已完成/取消格子的说明文字 (红色)
-    let noteEl = null;
     if (data.status !== 'active' && data.note && data.note.trim()) {
       const note = document.createElement('div');
       note.className = 'status-note';
       note.textContent = data.note;
       cell.appendChild(note);
-      noteEl = note;
     }
 
     // status is communicated visually via the diagonal line / X overlay and the restore button
@@ -2609,11 +2607,12 @@ const DayView = {
     }
     cell.appendChild(actions);
 
-    content.addEventListener('click', () => this.enterEdit(cell, dateStr, index, pageIdx));
-    // 任务五: 点击红色说明也能进入编辑
-    if (noteEl) {
-      noteEl.addEventListener('click', () => this.enterEdit(cell, dateStr, index, pageIdx));
-    }
+    // 整个格子都可点击进入编辑 (正文 + 红色说明 + 覆盖层区域)
+    cell.addEventListener('click', (e) => {
+      // 排除右下角操作按钮
+      if (e.target.closest && e.target.closest('.cell-actions')) return;
+      this.enterEdit(cell, dateStr, index, pageIdx);
+    });
 
     actions.querySelector('.complete')?.addEventListener('click', (e) => {
       e.stopPropagation();
