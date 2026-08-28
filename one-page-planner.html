@@ -303,6 +303,18 @@
     background: var(--bg-hover);
   }
 
+  /* 任务七: 存储将满告警 */
+  .storage-warning {
+    padding: 8px 10px;
+    margin: 6px 8px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--accent-dark, #C0392B);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+  }
+
   .sidebar-list {
     flex: 1 1 auto;
     overflow-y: auto;
@@ -541,6 +553,7 @@
       <pre id="data-view-json" class="data-view-json"></pre>
     </div>
     <div class="modal-footer">
+      <button class="btn btn-secondary" id="archive-btn">归档 1 年前数据</button>
       <button class="btn btn-secondary" data-close="data-view-modal">关闭</button>
     </div>
   </div>
@@ -1836,6 +1849,40 @@
 const STORAGE_KEY = 'one-page-planner:v1';
 
 /* =====================================================================
+ *  任务七: 存储压缩辅助 (gzip + base64)
+ *  存储格式: 'GZ|' + base64(gzip(json))，不支持 CompressionStream 时回退纯 JSON
+ * ===================================================================== */
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
+
+function base64ToArrayBuffer(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+async function compressJSON(json) {
+  const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
+  const buf = await new Response(stream).arrayBuffer();
+  return 'GZ|' + arrayBufferToBase64(buf);
+}
+
+async function decompressJSON(payload) {
+  if (typeof payload !== 'string' || !payload.startsWith('GZ|')) {
+    return JSON.parse(payload);
+  }
+  const buf = base64ToArrayBuffer(payload.slice(3));
+  const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+  const json = await new Response(stream).text();
+  return JSON.parse(json);
+}
+
+/* =====================================================================
  *  任务三: 4×4 功能分区 + 重要性排序 (单一事实源)
  *  Grid 布局 (4 列 × 4 行, index 0 = 左上 info, CSS Grid row-major 自动填充):
  *    row 0: 0(info) 1(work) 2(flex) 3(personal)
@@ -1879,10 +1926,16 @@ const Store = {
   data: null,
   _saveTimer: null,
 
-  load() {
+  async load() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      this.data = raw ? JSON.parse(raw) : null;
+      if (!raw) {
+        this.data = null;
+      } else if (typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined') {
+        this.data = await decompressJSON(raw);
+      } else {
+        this.data = JSON.parse(raw);
+      }
     } catch (e) {
       console.warn('Failed to load data', e);
       this.data = null;
@@ -1933,12 +1986,31 @@ const Store = {
   save() {
     clearTimeout(this._saveTimer);
     this._saveTimer = setTimeout(() => {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
-      } catch (e) {
+      this._persist();
+    }, 200);
+  },
+
+  // 任务七: 压缩持久化 (gzip + base64, 不支持时回退 JSON)
+  async _persist() {
+    try {
+      const json = JSON.stringify(this.data);
+      let payload = json;
+      if (typeof CompressionStream !== 'undefined') {
+        try {
+          payload = await compressJSON(json);
+        } catch (e) {
+          payload = json;
+        }
+      }
+      localStorage.setItem(STORAGE_KEY, payload);
+    } catch (e) {
+      // 任务七: 容量不足降级提示
+      if (e && (e.name === 'QuotaExceededError' || e.code === 22)) {
+        alert('存储空间已满，建议在侧边栏「查看」中归档或导出备份数据');
+      } else {
         console.warn('Failed to save data', e);
       }
-    }, 200);
+    }
   },
 
   // ---- 多页支持 (任务二): cells[dateStr] = { pages: [page0, page1, ...] }
@@ -3291,11 +3363,12 @@ const App = {
   currentView: 'day',
   currentDate: new Date(),
 
-  init() {
-    Store.load();
+  async init() {
+    await Store.load();
     this.bindUI();
     this.renderImportantSidebar();
     this.render();
+    this.checkStorageUsage();
     // auto-fetch weather/location (non-blocking)
     Weather.fetch().then(() => {
       this.render();
@@ -3341,6 +3414,9 @@ const App = {
 
     const viewBtn = document.getElementById('view-btn');
     if (viewBtn) viewBtn.addEventListener('click', () => this.viewData());
+
+    const archiveBtn = document.getElementById('archive-btn');
+    if (archiveBtn) archiveBtn.addEventListener('click', () => this.archiveData(1));
 
     // 数据查看弹窗关闭
     document.querySelectorAll('[data-close="data-view-modal"]').forEach(btn => {
@@ -3680,16 +3756,35 @@ const App = {
   },
 
   // 查看: 只读展示当前数据结构
-  viewData() {
+  async viewData() {
     try {
       const data = Store.data || { cells: {}, importantDays: [], settings: {} };
       const days = Object.keys(data.cells || {}).length;
       const importantCount = (data.importantDays || []).length;
       const json = JSON.stringify(data, null, 2);
-      const sizeBytes = new Blob([json]).size;
-      const sizeKB = (sizeBytes / 1024).toFixed(2);
+      const rawBytes = new Blob([json]).size;
+      const rawKB = (rawBytes / 1024).toFixed(2);
       const totalMB = 5;
-      const pct = ((sizeBytes / (totalMB * 1024 * 1024)) * 100).toFixed(2);
+      const totalBytes = totalMB * 1024 * 1024;
+      const pct = ((rawBytes / totalBytes) * 100).toFixed(2);
+
+      // 任务七: 估算 gzip 压缩后大小与预计可用年限
+      let compressedKB = rawKB;
+      let ratioText = '—';
+      try {
+        const compressed = await compressJSON(JSON.stringify(data));
+        const compressedBytes = new Blob([compressed]).size;
+        compressedKB = (compressedBytes / 1024).toFixed(2);
+        ratioText = rawBytes > 0 ? Math.round((compressedBytes / rawBytes) * 100) + '%' : '—';
+      } catch (e) {}
+
+      let yearsText = '—';
+      if (days > 0 && rawBytes > 0) {
+        const dailyBytes = rawBytes / days;
+        const remainingBytes = totalBytes - rawBytes;
+        const remainingYears = remainingBytes / dailyBytes / 365;
+        yearsText = remainingYears > 0 ? remainingYears.toFixed(1) + ' 年' : '已接近上限';
+      }
 
       const summary = document.getElementById('data-view-summary');
       const jsonEl = document.getElementById('data-view-json');
@@ -3697,8 +3792,10 @@ const App = {
         summary.innerHTML = `
           <div>数据日期数：${days} 天</div>
           <div>重要日子数：${importantCount} 个</div>
-          <div>JSON 大小：${sizeKB} KB（约 ${sizeBytes} 字节）</div>
-          <div>已用容量：约 ${sizeKB} KB / ${totalMB} MB（${pct}%）</div>
+          <div>原始 JSON 大小：${rawKB} KB</div>
+          <div>gzip 压缩后：${compressedKB} KB（压缩率 ${ratioText}）</div>
+          <div>已用容量：${pct}% / ${totalMB} MB</div>
+          <div>预计可用年限：约 ${yearsText}</div>
         `;
       }
       if (jsonEl) jsonEl.textContent = json;
@@ -3706,6 +3803,65 @@ const App = {
     } catch (e) {
       alert('查看失败：' + e.message);
     }
+  },
+
+  // 任务七: 归档 N 年前数据 (导出下载后从热数据移除)
+  archiveData(years = 1) {
+    const threshold = new Date();
+    threshold.setFullYear(threshold.getFullYear() - years);
+    const thresholdStr = DateUtil.toKey(threshold);
+    const archived = { cells: {}, importantDays: [], settings: Store.data.settings || {} };
+    const keptCells = {};
+    for (const dateStr in (Store.data.cells || {})) {
+      if (dateStr < thresholdStr) {
+        archived.cells[dateStr] = Store.data.cells[dateStr];
+      } else {
+        keptCells[dateStr] = Store.data.cells[dateStr];
+      }
+    }
+    const count = Object.keys(archived.cells).length;
+    if (count === 0) {
+      alert('没有 ' + years + ' 年前的可归档数据');
+      return;
+    }
+    const ok = confirm(`将归档 ${count} 天数据（${years} 年前）。\n归档数据会导出下载并从当前数据移除，是否继续？`);
+    if (!ok) return;
+    const json = JSON.stringify(archived, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const d = new Date();
+    const ymd = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    a.href = url;
+    a.download = `one-page-planner-archive-${years}y-${count}days.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    Store.data.cells = keptCells;
+    Store.save();
+    this.render();
+    this.viewData();
+  },
+
+  // 任务七: 启动时检查存储占用, 超过阈值给出提示
+  checkStorageUsage() {
+    try {
+      const data = Store.data || { cells: {}, importantDays: [], settings: {} };
+      const json = JSON.stringify(data);
+      const sizeBytes = new Blob([json]).size;
+      const pct = sizeBytes / (5 * 1024 * 1024);
+      if (pct > 0.8) {
+        console.warn('[storage] 已用 ' + (pct * 100).toFixed(1) + '%，建议归档/导出');
+        const list = document.getElementById('sidebar-list');
+        if (list) {
+          const warning = document.createElement('div');
+          warning.className = 'storage-warning';
+          warning.textContent = '⚠ 存储将满，建议归档/导出';
+          list.prepend(warning);
+        }
+      }
+    } catch (e) {}
   },
 
   // 关闭数据查看弹窗
