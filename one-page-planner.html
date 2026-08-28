@@ -3417,8 +3417,8 @@ const App = {
   async init() {
     await Store.load();
     // 每次加载都回到今天的日视图
-    this.currentView = 'day';
     this.currentDate = new Date();
+    this.setView('day');
     this.bindUI();
     this.renderImportantSidebar();
     this.render();
