@@ -1953,6 +1953,8 @@ const Store = {
     if (!('locationSource' in this.data.settings)) this.data.settings.locationSource = 'manual';
     if (!('geo' in this.data.settings)) this.data.settings.geo = null;
     if (!('weatherDisabled' in this.data.settings)) this.data.settings.weatherDisabled = false;
+    if (!('weatherDate' in this.data.settings)) this.data.settings.weatherDate = '';
+    if (!('geoDeniedDate' in this.data.settings)) this.data.settings.geoDeniedDate = '';
     if (!this.data.cells) this.data.cells = {};
 
     // 数据迁移 (任务二): 旧 cells[dateStr][index] → cells[dateStr] = { pages: [...] }
@@ -2989,6 +2991,7 @@ const WEATHER_TRANSLATIONS = {
   // Other
   'dust': '浮尘', 'sand': '沙尘', 'windy': '大风',
   'patchy rain possible': '可能有零星降雨',
+  'patchy rain nearby': '附近有零星降雨',
   'patchy snow possible': '可能有零星降雪',
   'patchy freezing drizzle possible': '可能有零星冻毛毛雨',
   'patchy freezing rain possible': '可能有零星冻雨',
@@ -3223,6 +3226,12 @@ const Weather = {
     return new Promise((resolve, reject) => {
       if (!this.isGeoSupported()) return reject(new Error('浏览器不支持定位 API'));
       if (!this.isSecureContext()) return reject(new Error('需要 HTTPS 或 localhost 才能使用定位'));
+      // 需求: 一天问一次。当天用户已拒绝过定位，直接跳过，不再弹授权。
+      const todayKey = DateUtil.toKey(new Date());
+      const settings = Store.getSettings();
+      if (!force && settings.geoDeniedDate === todayKey) {
+        return reject(new Error('今天已跳过定位'));
+      }
       if (!force && this._geoCache && (Date.now() - this._geoTs) < this._geoTtl) {
         return resolve(this._geoCache);
       }
@@ -3242,6 +3251,11 @@ const Weather = {
           resolve(result);
         },
         (err) => {
+          // 用户拒绝定位时记录日期，当天不再反复弹授权
+          if (err.code === 1 && Store.data) {
+            Store.data.settings.geoDeniedDate = todayKey;
+            Store.save();
+          }
           const reasons = { 1: '用户拒绝定位', 2: '定位不可用', 3: '定位超时' };
           reject(new Error(reasons[err.code] || err.message));
         },
@@ -3290,6 +3304,19 @@ const Weather = {
       return this._cache;
     }
     const settings = Store.getSettings();
+    const todayKey = DateUtil.toKey(new Date());
+    // 需求: 当天已保存过天气/位置，直接复用，不重复定位。
+    if (!force && settings.weatherDate === todayKey && (settings.weather || settings.location)) {
+      this._cache = {
+        location: settings.location || '',
+        weather: settings.weather || '',
+        city: settings.city || '',
+        source: settings.locationSource || 'cached',
+        hasGeo: !!settings.geo
+      };
+      this._ts = now;
+      return this._cache;
+    }
     const userCity = (settings.city || '').trim();
     let displayCity = userCity;
     let source = userCity ? 'user' : 'pending';
@@ -3347,7 +3374,8 @@ const Weather = {
         ...Store.data.settings,
         location: this._cache.location,
         weather: this._cache.weather,
-        locationSource: source
+        locationSource: source,
+        weatherDate: todayKey
       };
       Store.save();
     }
@@ -3388,6 +3416,9 @@ const App = {
 
   async init() {
     await Store.load();
+    // 每次加载都回到今天的日视图
+    this.currentView = 'day';
+    this.currentDate = new Date();
     this.bindUI();
     this.renderImportantSidebar();
     this.render();
