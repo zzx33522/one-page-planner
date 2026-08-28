@@ -272,6 +272,37 @@
   }
   .btn-add-icon:hover { background: var(--accent); transform: scale(1.1); }
 
+  /* 任务六: 侧边栏导入/导出/查看工具栏 */
+  .sidebar-actions {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--bg-soft);
+  }
+
+  .sidebar-action-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 5px 4px;
+    font-size: 11px;
+    letter-spacing: 1px;
+    font-family: var(--font-sans);
+    color: var(--text-secondary);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+  }
+
+  .sidebar-action-btn:hover {
+    color: var(--text);
+    border-color: var(--text-secondary);
+    background: var(--bg-hover);
+  }
+
   .sidebar-list {
     flex: 1 1 auto;
     overflow-y: auto;
@@ -402,6 +433,12 @@
         <button class="btn-add-icon" id="sidebar-add-btn" title="添加重要日子">+</button>
         <button class="sidebar-toggle" id="sidebar-toggle-btn" title="收起侧边栏">‹</button>
       </div>
+      <div class="sidebar-actions">
+        <button class="sidebar-action-btn" id="export-btn" title="导出数据为 JSON">导出</button>
+        <button class="sidebar-action-btn" id="import-btn" title="从 JSON 文件导入">导入</button>
+        <button class="sidebar-action-btn" id="view-btn" title="查看当前数据">查看</button>
+        <input type="file" id="import-file-input" accept=".json,application/json" hidden />
+      </div>
       <div class="sidebar-list" id="sidebar-list">
         <div class="sidebar-empty">暂无重要日子<br>点击 + 添加</div>
       </div>
@@ -487,6 +524,24 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" id="modal-done">完成</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop hidden" id="data-view-modal">
+  <div class="modal modal-wide" role="dialog" aria-labelledby="data-view-title">
+    <div class="modal-header">
+      <div class="modal-title" id="data-view-title">数据查看</div>
+      <button class="modal-close" data-close="data-view-modal" title="关闭">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="data-view-summary" class="data-view-summary"></div>
+      <pre id="data-view-json" class="data-view-json"></pre>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-close="data-view-modal">关闭</button>
     </div>
   </div>
 </div>
@@ -1469,6 +1524,38 @@
   .btn-secondary { background: var(--bg-soft); color: var(--text); border: 1px solid var(--border); }
   .btn-secondary:hover { background: var(--bg-hover); }
 
+  /* 任务六: 数据查看弹窗 */
+  .modal-wide {
+    max-width: 720px;
+  }
+
+  .data-view-summary {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    line-height: 1.7;
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    background: var(--bg-soft);
+    border-radius: var(--radius);
+  }
+
+  .data-view-json {
+    margin: 0;
+    padding: 14px 16px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--bg-soft);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    overflow: auto;
+    max-height: 50vh;
+    white-space: pre;
+    word-break: break-all;
+  }
+
   .form-row { margin-bottom: 16px; }
 
   .form-label {
@@ -2258,6 +2345,9 @@ const ICONS = {
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
   x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
   restore: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>',
+  download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+  upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
   sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m4.93 19.07 1.41-1.41"/><path d="m17.66 6.34 1.41-1.41"/></svg>',
   pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
   star: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
@@ -3234,6 +3324,35 @@ const App = {
       });
     }
 
+    // 任务六: 导出 / 导入 / 查看
+    const exportBtn = document.getElementById('export-btn');
+    if (exportBtn) exportBtn.addEventListener('click', () => this.exportData());
+
+    const importBtn = document.getElementById('import-btn');
+    const importFileInput = document.getElementById('import-file-input');
+    if (importBtn && importFileInput) {
+      importBtn.addEventListener('click', () => importFileInput.click());
+      importFileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) this.importData(file);
+        importFileInput.value = '';
+      });
+    }
+
+    const viewBtn = document.getElementById('view-btn');
+    if (viewBtn) viewBtn.addEventListener('click', () => this.viewData());
+
+    // 数据查看弹窗关闭
+    document.querySelectorAll('[data-close="data-view-modal"]').forEach(btn => {
+      btn.addEventListener('click', () => this.closeDataView());
+    });
+    const dataViewModal = document.getElementById('data-view-modal');
+    if (dataViewModal) {
+      dataViewModal.addEventListener('click', (e) => {
+        if (e.target.id === 'data-view-modal') this.closeDataView();
+      });
+    }
+
     // Sidebar collapse/expand toggle
     const sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
     const sidebar = document.getElementById('important-sidebar');
@@ -3498,6 +3617,100 @@ const App = {
       case 'month': MonthView.render(this.currentDate); break;
       case 'year':  YearView.render(this.currentDate); break;
     }
+  },
+
+  // ---- 任务六: 导出 / 导入 / 查看 ----
+
+  // 导出: 将 Store.data 序列化为 JSON 并下载
+  exportData() {
+    try {
+      const data = Store.data || { cells: {}, importantDays: [], settings: {} };
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const d = new Date();
+      const ymd = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+      a.href = url;
+      a.download = `one-page-planner-${ymd}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert('导出失败：' + e.message);
+    }
+  },
+
+  // 导入: 校验 JSON 格式后覆盖当前数据
+  importData(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (!parsed || typeof parsed !== 'object') throw new Error('文件内容不是有效对象');
+        if (!('cells' in parsed) || !('importantDays' in parsed) || !('settings' in parsed)) {
+          throw new Error('文件缺少必要字段 (cells / importantDays / settings)');
+        }
+        const days = Object.keys(parsed.cells || {}).length;
+        const importantCount = (parsed.importantDays || []).length;
+        const ok = confirm(`导入将覆盖当前数据，是否继续？\n\n数据预览：${days} 天数据 / ${importantCount} 个重要日子`);
+        if (!ok) return;
+        Store.data = parsed;
+        if (!Store.data.cells) Store.data.cells = {};
+        // 数据迁移兼容 (旧格式 → 多页)
+        for (const dateStr in Store.data.cells) {
+          const day = Store.data.cells[dateStr];
+          if (day && !day.pages && typeof day === 'object') {
+            Store.data.cells[dateStr] = { pages: [day] };
+          }
+        }
+        if (!Store.data.importantDays) Store.data.importantDays = [];
+        if (!Store.data.settings) Store.data.settings = {};
+        Store.save();
+        this.render();
+        this.renderImportantSidebar();
+        alert('导入成功');
+      } catch (err) {
+        alert('导入失败：' + err.message);
+      }
+    };
+    reader.onerror = () => alert('读取文件失败');
+    reader.readAsText(file);
+  },
+
+  // 查看: 只读展示当前数据结构
+  viewData() {
+    try {
+      const data = Store.data || { cells: {}, importantDays: [], settings: {} };
+      const days = Object.keys(data.cells || {}).length;
+      const importantCount = (data.importantDays || []).length;
+      const json = JSON.stringify(data, null, 2);
+      const sizeBytes = new Blob([json]).size;
+      const sizeKB = (sizeBytes / 1024).toFixed(2);
+      const totalMB = 5;
+      const pct = ((sizeBytes / (totalMB * 1024 * 1024)) * 100).toFixed(2);
+
+      const summary = document.getElementById('data-view-summary');
+      const jsonEl = document.getElementById('data-view-json');
+      if (summary) {
+        summary.innerHTML = `
+          <div>数据日期数：${days} 天</div>
+          <div>重要日子数：${importantCount} 个</div>
+          <div>JSON 大小：${sizeKB} KB（约 ${sizeBytes} 字节）</div>
+          <div>已用容量：约 ${sizeKB} KB / ${totalMB} MB（${pct}%）</div>
+        `;
+      }
+      if (jsonEl) jsonEl.textContent = json;
+      document.getElementById('data-view-modal').classList.remove('hidden');
+    } catch (e) {
+      alert('查看失败：' + e.message);
+    }
+  },
+
+  // 关闭数据查看弹窗
+  closeDataView() {
+    document.getElementById('data-view-modal').classList.add('hidden');
   },
 
   openImportantModal() {
