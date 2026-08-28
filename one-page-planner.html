@@ -2700,8 +2700,17 @@ const DayView = {
       App.render();
     };
 
-    textarea.addEventListener('blur', save);
-    if (noteInput) noteInput.addEventListener('blur', save);
+    // 任务五修复: 焦点在正文与说明框之间切换时不保存，只有移出格子才保存
+    textarea.addEventListener('blur', (e) => {
+      if (e.relatedTarget && cell.contains(e.relatedTarget)) return;
+      save();
+    });
+    if (noteInput) {
+      noteInput.addEventListener('blur', (e) => {
+        if (e.relatedTarget && cell.contains(e.relatedTarget)) return;
+        save();
+      });
+    }
     if (noteInput) {
       noteInput.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' || ((e.metaKey || e.ctrlKey) && e.key === 'Enter')) {
