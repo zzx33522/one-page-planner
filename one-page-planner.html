@@ -667,6 +667,47 @@
     min-height: 0;
   }
 
+  /* 任务五: 编辑容器 (正文 + 说明) */
+  .cell-edit-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cell-note-input {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-top: 1px dashed var(--accent);
+    resize: none;
+    width: 100%;
+    min-height: 38px;
+  }
+
+  .cell-note-input::placeholder {
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  /* 任务五: 已完成/取消格子的说明文字 (红色) */
+  .status-note {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-top: 1px dashed var(--accent);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
   .cell-actions {
     position: absolute;
     bottom: 6px;
@@ -1820,8 +1861,10 @@ const Store = {
   getCell(dateStr, index, pageIdx) {
     if (pageIdx === undefined) pageIdx = this.getCurrentPage(dateStr);
     const day = this.data.cells[dateStr];
-    if (!day || !day.pages || !day.pages[pageIdx]) return { content: '', status: 'active' };
-    return day.pages[pageIdx][index] || { content: '', status: 'active' };
+    if (!day || !day.pages || !day.pages[pageIdx]) return { content: '', status: 'active', note: '' };
+    const c = day.pages[pageIdx][index];
+    if (!c) return { content: '', status: 'active', note: '' };
+    return { content: c.content || '', status: c.status || 'active', note: c.note || '' };
   },
 
   setCell(dateStr, index, content, pageIdx) {
@@ -1829,7 +1872,7 @@ const Store = {
     if (!this.data.cells[dateStr]) this.data.cells[dateStr] = { pages: [{}] };
     if (!this.data.cells[dateStr].pages[pageIdx]) this.data.cells[dateStr].pages[pageIdx] = {};
     if (!this.data.cells[dateStr].pages[pageIdx][index]) {
-      this.data.cells[dateStr].pages[pageIdx][index] = { content: '', status: 'active' };
+      this.data.cells[dateStr].pages[pageIdx][index] = { content: '', status: 'active', note: '' };
     }
     this.data.cells[dateStr].pages[pageIdx][index].content = content;
     this.save();
@@ -1840,9 +1883,24 @@ const Store = {
     if (!this.data.cells[dateStr]) this.data.cells[dateStr] = { pages: [{}] };
     if (!this.data.cells[dateStr].pages[pageIdx]) this.data.cells[dateStr].pages[pageIdx] = {};
     if (!this.data.cells[dateStr].pages[pageIdx][index]) {
-      this.data.cells[dateStr].pages[pageIdx][index] = { content: '', status: 'active' };
+      this.data.cells[dateStr].pages[pageIdx][index] = { content: '', status: 'active', note: '' };
     }
-    this.data.cells[dateStr].pages[pageIdx][index].status = status;
+    const cell = this.data.cells[dateStr].pages[pageIdx][index];
+    cell.status = status;
+    // 恢复原状时清空说明 (任务五)
+    if (status === 'active') cell.note = '';
+    this.save();
+  },
+
+  // 任务五: 单独保存格子说明 (仅 completed / cancelled 状态使用)
+  setCellNote(dateStr, index, note, pageIdx) {
+    if (pageIdx === undefined) pageIdx = this.getCurrentPage(dateStr);
+    if (!this.data.cells[dateStr]) this.data.cells[dateStr] = { pages: [{}] };
+    if (!this.data.cells[dateStr].pages[pageIdx]) this.data.cells[dateStr].pages[pageIdx] = {};
+    if (!this.data.cells[dateStr].pages[pageIdx][index]) {
+      this.data.cells[dateStr].pages[pageIdx][index] = { content: '', status: 'active', note: '' };
+    }
+    this.data.cells[dateStr].pages[pageIdx][index].note = note;
     this.save();
   },
 
@@ -2363,6 +2421,14 @@ const DayView = {
     this.renderContent(content, data.content);
     cell.appendChild(content);
 
+    // 任务五: 已完成/取消格子的说明文字 (红色)
+    if (data.status !== 'active' && data.note && data.note.trim()) {
+      const note = document.createElement('div');
+      note.className = 'status-note';
+      note.textContent = data.note;
+      cell.appendChild(note);
+    }
+
     // status is communicated visually via the diagonal line / X overlay and the restore button
 
     const actions = document.createElement('div');
@@ -2416,15 +2482,37 @@ const DayView = {
 
     const data = Store.getCell(dateStr, index, pageIdx);
     const currentContent = data.content;
+    const currentNote = data.note || '';
+    const canEditNote = data.status === 'completed' || data.status === 'cancelled';
 
     const content = cell.querySelector('.cell-content');
+    const oldNote = cell.querySelector('.status-note');
+
+    // 任务五: 编辑容器 = 正文 textarea + (可选) 说明 textarea
+    const wrap = document.createElement('div');
+    wrap.className = 'cell-edit-wrap';
+
     const textarea = document.createElement('textarea');
     textarea.className = 'cell-textarea';
     textarea.value = currentContent;
     textarea.placeholder = '支持 Markdown：# 标题、**加粗**、*斜体*、[链接](url)、- 列表…';
     textarea.spellcheck = false;
+    wrap.appendChild(textarea);
 
-    cell.replaceChild(textarea, content);
+    let noteInput = null;
+    if (canEditNote) {
+      noteInput = document.createElement('textarea');
+      noteInput.className = 'cell-note-input';
+      noteInput.value = currentNote;
+      noteInput.placeholder = data.status === 'completed' ? '完成说明（保存后红色字显示）' : '取消原因（保存后红色字显示）';
+      noteInput.spellcheck = false;
+      wrap.appendChild(noteInput);
+    }
+
+    // 移除旧的正文显示和说明显示，再插入编辑容器
+    if (oldNote) cell.removeChild(oldNote);
+    cell.replaceChild(wrap, content);
+
     textarea.focus();
     textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
 
@@ -2434,12 +2522,19 @@ const DayView = {
       saved = true;
       const newContent = textarea.value;
       if (newContent !== currentContent) {
-        Store.setCell(dateStr, index, newContent);
+        Store.setCell(dateStr, index, newContent, pageIdx);
+      }
+      if (noteInput) {
+        const newNote = noteInput.value;
+        if (newNote !== currentNote) {
+          Store.setCellNote(dateStr, index, newNote, pageIdx);
+        }
       }
       App.render();
     };
 
     textarea.addEventListener('blur', save);
+    if (noteInput) noteInput.addEventListener('blur', save);
     textarea.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         e.preventDefault();
