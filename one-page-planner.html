@@ -762,6 +762,13 @@
     font-style: italic;
   }
 
+  /* 进行中/普通备注的输入框使用蓝色系，与完成/取消的红色说明区分 */
+  .cell-note-input.progress-note-input {
+    color: var(--info-accent);
+    background: var(--info-bg);
+    border-top-color: var(--info-accent);
+  }
+
   /* 任务五: 已完成/取消格子的说明文字 (红色) */
   .status-note {
     flex-shrink: 0;
@@ -774,6 +781,13 @@
     border-top: 1px dashed var(--accent);
     white-space: pre-wrap;
     word-wrap: break-word;
+  }
+
+  /* 普通进展说明使用蓝色系，区别于完成/取消的红色 */
+  .status-note.progress-note {
+    color: var(--info-accent);
+    background: var(--info-bg);
+    border-top-color: var(--info-accent);
   }
 
   .cell-actions {
@@ -1943,10 +1957,12 @@ const Store = {
     if (!this.data) {
       this.data = {
         cells: {},
+        weatherByDate: {},
         importantDays: [],
         settings: { location: '', weather: '', city: '', locationSource: 'manual', geo: null, weatherDisabled: false }
       };
     }
+    if (!this.data.weatherByDate) this.data.weatherByDate = {};
     if (!this.data.importantDays) this.data.importantDays = [];
     if (!this.data.settings) this.data.settings = { location: '', weather: '', city: '', locationSource: 'manual', geo: null };
     if (!('city' in this.data.settings)) this.data.settings.city = '';
@@ -2028,6 +2044,27 @@ const Store = {
     return { content: c.content || '', status: c.status || 'active', note: c.note || '' };
   },
 
+  // 按日期保存/读取当天天气与位置，避免次日刷新后丢失。
+  getWeatherForDate(dateStr) {
+    const record = this.data.weatherByDate && this.data.weatherByDate[dateStr];
+    return {
+      location: (record && record.location) || '',
+      weather: (record && record.weather) || ''
+    };
+  },
+
+  setWeatherForDate(dateStr, record) {
+    if (!this.data.weatherByDate) this.data.weatherByDate = {};
+    this.data.weatherByDate[dateStr] = {
+      location: record.location || '',
+      weather: record.weather || '',
+      city: record.city || '',
+      source: record.source || 'unknown',
+      hasGeo: !!record.hasGeo
+    };
+    this.save();
+  },
+
   setCell(dateStr, index, content, pageIdx) {
     if (pageIdx === undefined) pageIdx = this.getCurrentPage(dateStr);
     if (!this.data.cells[dateStr]) this.data.cells[dateStr] = { pages: [{}] };
@@ -2053,7 +2090,7 @@ const Store = {
     this.save();
   },
 
-  // 任务五: 单独保存格子说明 (仅 completed / cancelled 状态使用)
+  // 单独保存格子说明（完成/取消用红色，普通进展用蓝色）
   setCellNote(dateStr, index, note, pageIdx) {
     if (pageIdx === undefined) pageIdx = this.getCurrentPage(dateStr);
     if (!this.data.cells[dateStr]) this.data.cells[dateStr] = { pages: [{}] };
@@ -2505,7 +2542,7 @@ const DayView = {
     const today = new Date();
     const isToday = DateUtil.isSameDay(date, today);
     const settings = Store.getSettings();
-    const wDisp = Weather.getDisplayWeather();
+    const wDisp = isToday ? Weather.getDisplayWeather() : Store.getWeatherForDate(dateStr);
     const important = Store.getImportantDaysForDate(dateStr);
 
     // 提取天气描述（去掉温度）
@@ -2518,6 +2555,9 @@ const DayView = {
       displayLoc = displayLoc.split('·')[0].trim();
     }
     if (displayLoc === '未知位置' || displayLoc === '—' || displayLoc === '未知') displayLoc = '';
+
+    // 今天始终显示天气行（便于点击定位）；其他日期仅在当天已有记录时显示。
+    const showWeatherRow = isToday || !!(weatherDesc || displayLoc);
 
     // 整行日期+星期
     const dateLine = `${date.getFullYear()} 年 ${date.getMonth()+1} 月 ${date.getDate()} 日 · ${DateUtil.weekdayCN(date)}`;
@@ -2538,12 +2578,12 @@ const DayView = {
           }).join('')}
         </div>
       ` : ''}
-      ${isToday ? `
+      ${showWeatherRow ? `
         <div class="info-today-row">
           ${weatherDesc ? `<span class="info-weather-text">${escapeHTML(weatherDesc)}</span>` : ''}
           ${weatherDesc && displayLoc ? `<span class="info-divider">·</span>` : ''}
           ${displayLoc ? `<span class="info-location-text">${escapeHTML(displayLoc)}</span>` : ''}
-          <button class="info-meta-action" data-action="geo" title="重新定位">📍</button>
+          ${isToday ? `<button class="info-meta-action" data-action="geo" title="重新定位">📍</button>` : ''}
         </div>
       ` : ''}
     `;
@@ -2585,10 +2625,10 @@ const DayView = {
     this.renderContent(content, data.content);
     cell.appendChild(content);
 
-    // 任务五: 已完成/取消格子的说明文字 (红色)
-    if (data.status !== 'active' && data.note && data.note.trim()) {
+    // 说明文字：完成/取消为红色，普通进展为蓝色
+    if (data.note && data.note.trim()) {
       const note = document.createElement('div');
-      note.className = 'status-note';
+      note.className = data.status === 'active' ? 'status-note progress-note' : 'status-note';
       note.textContent = data.note;
       cell.appendChild(note);
     }
@@ -2652,12 +2692,11 @@ const DayView = {
     const data = Store.getCell(dateStr, index, pageIdx);
     const currentContent = data.content;
     const currentNote = data.note || '';
-    const canEditNote = data.status === 'completed' || data.status === 'cancelled';
 
     const content = cell.querySelector('.cell-content');
     const oldNote = cell.querySelector('.status-note');
 
-    // 任务五: 编辑容器 = 正文 textarea + (可选) 说明 textarea
+    // 编辑容器 = 正文 textarea + 说明 textarea（所有状态都可写进展说明）
     const wrap = document.createElement('div');
     wrap.className = 'cell-edit-wrap';
 
@@ -2668,15 +2707,16 @@ const DayView = {
     textarea.spellcheck = false;
     wrap.appendChild(textarea);
 
-    let noteInput = null;
-    if (canEditNote) {
-      noteInput = document.createElement('textarea');
-      noteInput.className = 'cell-note-input';
-      noteInput.value = currentNote;
-      noteInput.placeholder = data.status === 'completed' ? '完成说明（保存后红色字显示）' : '取消原因（保存后红色字显示）';
-      noteInput.spellcheck = false;
-      wrap.appendChild(noteInput);
-    }
+    const noteInput = document.createElement('textarea');
+    noteInput.className = 'cell-note-input' + (data.status === 'active' ? ' progress-note-input' : '');
+    noteInput.value = currentNote;
+    noteInput.placeholder = data.status === 'completed'
+      ? '完成说明（保存后红色字显示）'
+      : data.status === 'cancelled'
+        ? '取消原因（保存后红色字显示）'
+        : '进展 / 备注（保存后蓝色字显示）';
+    noteInput.spellcheck = false;
+    wrap.appendChild(noteInput);
 
     // 移除旧的正文显示和说明显示，再插入编辑容器
     if (oldNote) cell.removeChild(oldNote);
@@ -3315,11 +3355,21 @@ const Weather = {
         hasGeo: !!settings.geo
       };
       this._ts = now;
+      if (Store.data && (this._cache.location || this._cache.weather)) {
+        Store.setWeatherForDate(todayKey, {
+          location: this._cache.location,
+          weather: this._cache.weather,
+          city: this._cache.city,
+          source: this._cache.source,
+          hasGeo: this._cache.hasGeo
+        });
+      }
       return this._cache;
     }
     const userCity = (settings.city || '').trim();
-    let displayCity = userCity;
-    let source = userCity ? 'user' : 'pending';
+    const lastKnownLocation = (settings.location || '').trim();
+    let displayCity = userCity || lastKnownLocation;
+    let source = userCity ? 'user' : (lastKnownLocation ? 'last-known' : 'pending');
     let weatherDesc = '';
 
     // 优先尝试用浏览器定位获取精确位置 (本地数据)
@@ -3343,9 +3393,8 @@ const Weather = {
       try {
         const ctrl = new AbortController();
         const timeout = setTimeout(() => ctrl.abort(), 6000);
-        const url = userCity
-          ? `https://wttr.in/${encodeURIComponent(userCity)}?format=j1&lang=zh`
-          : `https://wttr.in/${geo.lat.toFixed(4)},${geo.lng.toFixed(4)}?format=j1&lang=zh`;
+        const locationParam = userCity || (geo ? `${geo.lat.toFixed(4)},${geo.lng.toFixed(4)}` : displayCity);
+        const url = `https://wttr.in/${encodeURIComponent(locationParam)}?format=j1&lang=zh`;
         const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
         clearTimeout(timeout);
         if (res.ok) {
@@ -3377,6 +3426,16 @@ const Weather = {
         locationSource: source,
         weatherDate: todayKey
       };
+      // 只在拿到了有意义的信息时写当天记录，避免用空值覆盖历史位置。
+      if (this._cache.location || this._cache.weather) {
+        Store.setWeatherForDate(todayKey, {
+          location: this._cache.location,
+          weather: this._cache.weather,
+          city: this._cache.city,
+          source: this._cache.source,
+          hasGeo: this._cache.hasGeo
+        });
+      }
       Store.save();
     }
     return this._cache;
